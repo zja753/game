@@ -1,37 +1,40 @@
 # AGENTS.md
 
-Minimal key-decision log for AI coding agents working in this repo.
+本仓库 AI 编码代理的极简关键决策日志。
 
-## Tooling
+## 语言约定
 
-- **Package manager / task runner:** `vp` (Vite+). Use `vp <cmd>` — not `pnpm`,
-  `npm`, or raw `vite`. Examples: `vp dev`, `vp build`, `vp check`,
-  `vp add <pkg>`, `vp run <task>`.
-- **Template:** `vite:application` (single React app).
-- **Lint/format/types:** single command `vp check` (covers all three); the
-  pre-commit hook runs `vp check --fix` on staged files.
+- **仓库内代码注释**：全部使用中文。
+- **代理与用户沟通**：全部使用中文。
+- 本文档是上述约定的唯一权威说明，代理在生成或修改代码、提交信息、文档时必须遵守。
 
-## Stack
+## 工具链
 
-- React 19 + React Router 7 (data routers unnecessary so far; using
-  `BrowserRouter` + `Routes`).
-- TypeScript (`strict` is on via the template defaults; respect
-  `verbatimModuleSyntax` and `erasableSyntaxOnly`).
-- No global CSS framework. App shell styles live in `src/styles/`.
+- **包管理器 / 任务运行器**：`vp`（Vite+）。使用 `vp <cmd>`，不要使用
+  `pnpm`、`npm` 或原生的 `vite`。示例：`vp dev`、`vp build`、`vp check`、
+  `vp add <pkg>`、`vp run <task>`。
+- **模板**：`vite:application`（单 React 应用）。
+- **Lint / 格式化 / 类型检查**：单一命令 `vp check`（覆盖三者）；pre-commit
+  hook 会在暂存文件上执行 `vp check --fix`。
 
-## Game engine integration (pending)
+## 技术栈
 
-- Excalibur.js will live under the `/game` route. The placeholder page is
-  `src/pages/Game.tsx`.
-- Mount lifecycle: the engine must start on enter and tear down on leave (RAF
-  loop + audio context). Use a `useEffect` cleanup; do not start it at module
-  scope.
-- The Canvas element belongs inside `Game.tsx`. Do not mount Excalibur in the
-  document body.
+- React 19 + React Router 7（目前不需要 data router，使用
+  `BrowserRouter` + `Routes`）。
+- TypeScript（模板默认开启 `strict`；遵守 `verbatimModuleSyntax` 和
+  `erasableSyntaxOnly`）。
+- 不使用全局 CSS 框架。应用外壳样式放在 `src/styles/` 下。
 
-## Conventions
+## 游戏引擎集成（待办）
 
-- New top-level UI groups go under `src/pages/<name>/` with an `index.tsx`
-  barrel; shared components under `src/components/`.
-- Domain/game logic stays outside React. Put pure modules under `src/game/`
-  and let components import them; this keeps the engine testable without a DOM.
+- Excalibur.js 将放在 `/game` 路由下，占位页面是 `src/pages/Game.tsx`。
+- 挂载生命周期：引擎必须在进入路由时启动，在离开时销毁（RAF 循环 + 音频
+  上下文）。使用 `useEffect` 的清理函数，不要在模块顶层启动。
+- Canvas 元素应放在 `Game.tsx` 内部，不要把 Excalibur 挂载到 document body。
+
+## 代码规范
+
+- 新的顶层 UI 分组放在 `src/pages/<name>/` 下，并以 `index.tsx` 作为
+  barrel 文件；共享组件放在 `src/components/` 下。
+- 领域 / 游戏逻辑保持在 React 之外。纯模块放在 `src/game/` 下，由组件
+  引入；这样引擎可以在没有 DOM 的情况下进行测试。
