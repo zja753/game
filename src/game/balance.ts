@@ -77,3 +77,15 @@ export const PROJECTILE_COLOR = "#f9c74f";
 export const WALL_TAG = "wall";
 /** 投射物命中敌人群体的 tag —— 简化命中分支。 */
 export const ENEMY_TAG = "enemy";
+/**
+ * Game Over 浮层 (M0.5) —— DOM 半透明遮罩 + 面板 + 按钮。
+ * 颜色与现有 HUD 调性一致,沿用 `app.css` 现有的色板。
+ */
+export const GAME_OVER_OVERLAY_BG = "rgba(11, 13, 18, 0.78)";
+export const GAME_OVER_PANEL_BG = "#1b1d22";
+export const GAME_OVER_PANEL_BORDER = "#3a4150";
+export const GAME_OVER_TEXT_COLOR = "#ececec";
+export const GAME_OVER_SUBTEXT_COLOR = "#9aa3b2";
+export const GAME_OVER_BUTTON_BG = "#4cc9f0";
+export const GAME_OVER_BUTTON_BG_HOVER = "#7ad7f5";
+export const GAME_OVER_BUTTON_TEXT = "#0b0d12";

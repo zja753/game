@@ -66,6 +66,80 @@ body {
   display: block;
 }
 
+/*
+ * M0.5 Game Over 浮层 —— 覆盖在 canvas 之上,半透明背景 + 居中面板。
+ * 与 `.game-canvas` 同样脱离文档流 + 占满视口,层级 z 更高。
+ * 颜色全部从 `balance.ts` 同步过来,保持与场景视觉调性一致。
+ */
+.game-over-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--game-over-overlay-bg, rgba(11, 13, 18, 0.78));
+  /* 阻断外层 canvas 接收键盘/鼠标,避免遮罩打开时按空格继续触发逻辑。 */
+  pointer-events: auto;
+  animation: game-over-fade-in 200ms ease-out;
+}
+
+@keyframes game-over-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.game-over-panel {
+  min-width: 280px;
+  padding: 1.75rem 2rem;
+  background: var(--game-over-panel-bg, #1b1d22);
+  border: 1px solid var(--game-over-panel-border, #3a4150);
+  border-radius: 8px;
+  text-align: center;
+  color: var(--game-over-text-color, #ececec);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.game-over-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.75rem;
+  letter-spacing: 0.05em;
+  color: var(--game-over-text-color, #ececec);
+}
+
+.game-over-subtitle {
+  margin: 0 0 1.5rem;
+  color: var(--game-over-subtext-color, #9aa3b2);
+  font-size: 0.95rem;
+}
+
+.game-over-button {
+  appearance: none;
+  border: none;
+  border-radius: 6px;
+  padding: 0.65rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  background: var(--game-over-button-bg, #4cc9f0);
+  color: var(--game-over-button-text, #0b0d12);
+  transition: background 100ms ease-out;
+}
+
+.game-over-button:hover {
+  background: var(--game-over-button-bg-hover, #7ad7f5);
+}
+
+.game-over-button:focus-visible {
+  outline: 2px solid var(--game-over-button-bg-hover, #7ad7f5);
+  outline-offset: 2px;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color: #ececec;

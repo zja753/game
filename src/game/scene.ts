@@ -49,6 +49,7 @@ import {
   WALL_TAG,
 } from "./balance";
 import { Pistol } from "./weapons/Pistol";
+import { Projectile } from "./weapons/Projectile";
 
 /** 玩家初始 / 上限 HP(M0.1 与 M0.2 共用,后续若调阈值改这里即可)。 */
 const PLAYER_MAX_HP = 100;
@@ -262,13 +263,27 @@ function spawnEnemy(scene: Scene, getPlayerPos: () => Vector): void {
 }
 
 /**
+ * `createGame` 的可选项。
+ * M0.5 引入 `onPlayerDeath`:玩家 `Health` 进入 `isDead` 时同步调用,
+ * 通知 React 层显示 Game Over 浮层。`scene.ts` 不直接依赖 React / DOM。
+ */
+export interface CreateGameOptions {
+  /** 玩家死亡时的回调(此时引擎已停、敌人/投射物已冻结)。 */
+  onPlayerDeath?: () => void;
+}
+
+/**
  * 创建并启动 Excalibur 引擎,把世界场景挂到传入的 `<canvas>` 上。
  *
  * 调用方负责:
  *   1. 在 React `useEffect` 中调用,并把返回值交给清理函数;
  *   2. 卸载时调用 `disposeGame(engine)` 释放 RAF / 音频上下文。
+ *   3. 通过 `options.onPlayerDeath` 监听玩家死亡事件,弹出 Game Over 浮层。
  */
-export function createGame(canvas: HTMLCanvasElement): Promise<Engine> {
+export function createGame(
+  canvas: HTMLCanvasElement,
+  options: CreateGameOptions = {},
+): Promise<Engine> {
   const engine = new Engine({
     canvasElement: canvas,
     // 充满 canvas 所在的 DOM 容器,与路由全屏布局配合。
@@ -348,10 +363,13 @@ export function createGame(canvas: HTMLCanvasElement): Promise<Engine> {
   // M0.4:玩家按攻击键(空格)→ 调 `Pistol.tryFire`。
   // - `wasPressed` 是 Excalibur 的"按下当帧触发一次"事件,避免按住空格时每帧都发弹。
   // - `tryFire` 内部已做好节流(只在成功开火后才推进),所以这里反复按都没事。
+  // - M0.5:玩家死亡后 `clock` 已停,这里再防御性地 `isDead` 短路,
+  //   避免 React 重开前几帧的残留输入误触。
   // - TODO:接鼠标左键(M0.4 文档要求"留 TODO:接鼠标左键")。
   const pistol = new Pistol();
   player.on("preupdate", (evt) => {
     if (!evt.engine.input.keyboard.wasPressed(Keys.Space)) return;
+    if (playerHealth.isDead) return;
     pistol.tryFire({
       now: evt.engine.clock.now(),
       owner: player,
@@ -373,6 +391,8 @@ export function createGame(canvas: HTMLCanvasElement): Promise<Engine> {
     const other = evt.other.owner;
     if (!(other instanceof Enemy)) return;
     if (other.isKilled()) return;
+    // M0.5:玩家死亡时不再被扣血(虽然 clock 已停),防御性短路。
+    if (playerHealth.isDead) return;
     inContactEnemies.add(other);
     playerHealth.takeDamage(other.contactDamage, { source: other });
   });
@@ -446,6 +466,33 @@ export function createGame(canvas: HTMLCanvasElement): Promise<Engine> {
   });
   scene.add(spawnTimer);
   spawnTimer.start();
+
+  // M0.5 玩家死亡:
+  // - 玩家 `Health` 归零时 `events.emit('death')` 触发本回调。
+  // - 流程:① 冻结所有 `Enemy` / `Projectile` 的 `vel`;② 停 `spawnTimer` 防止再刷怪;
+  //   ③ `engine.clock.stop()` 让 RAF / 计时器 / onPreUpdate / 物理积分全部静止;
+  //   ④ 调 `options.onPlayerDeath` 通知 React 层弹 Game Over 浮层。
+  // - `clock.stop()` 已经能阻止所有 `preupdate` 触发,理论上不用手动置 `vel`。
+  //   但停时钟前 `scene.actors` 此刻仍在 `preupdate` 半帧内移动过几像素,
+  //   把 `vel` 显式置零能让"冻结瞬间"在视觉上更干净,也避免 React 重开前残留位移。
+  // - `playerHealth.onDeath` 用 `onDeath` 而不是直接订阅 `events` 是 M0.1 锁定的 API,
+  //   后续 M0.7 会在 `GameEventBus` 上重发 `player:died`,这里不抢先。
+  let deathHandled = false;
+  playerHealth.onDeath(() => {
+    if (deathHandled) return;
+    deathHandled = true;
+
+    for (const actor of scene.actors) {
+      if (actor instanceof Enemy || actor instanceof Projectile) {
+        actor.vel.setTo(0, 0);
+        // 顺手把角速度 / 加速度也清零,避免任何子系统残留位移。
+        actor.acc.setTo(0, 0);
+      }
+    }
+    spawnTimer.stop();
+    engine.clock.stop();
+    options.onPlayerDeath?.();
+  });
 
   engine.add("world", scene);
   // 显式切到 world:Excalibur 引擎默认激活的是空的 root 场景。

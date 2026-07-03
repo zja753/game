@@ -67,12 +67,36 @@
 
 ## M0.5 玩家死亡 + 重开
 
-- [ ]
-- [ ]
+- [x] `balance.ts` 新增 `GAME_OVER_*` 颜色常量(遮罩 / 面板 / 边框 / 主文 / 副文 / 按钮 / 按钮 hover / 按钮文字),全部从 `balance.ts` 同步到 `app.css` 内的 `var(--game-over-*, fallback)`。
+- [x] `scene.ts` 引入 `CreateGameOptions { onPlayerDeath?: () => void }` —— `createGame` 第二参数。
+- [x] `scene.ts` 死亡处理链(`playerHealth.onDeath`):
+  - ① 遍历 `scene.actors`,对所有 `Enemy` / `Projectile` 置 `vel = 0, acc = 0`(视觉冻结)。
+  - ② `spawnTimer.stop()`(停刷怪)。
+  - ③ `engine.clock.stop()`(停 RAF / preupdate / 物理积分 / 计时器)。
+  - ④ `options.onPlayerDeath?.()` 通知 React 层。
+  - `deathHandled` 守卫保证 `onDeath` 多次触发不重复执行。
+- [x] 防御性短路:`Pistol.tryFire` 与 `collisionstart` 在 `playerHealth.isDead` 时直接 return,避免 React 重开窗口期的残留输入误触。
+- [x] `pages/Game.tsx`:
+  - 引入 `useState<isGameOver>` / `useState<gameKey>`;`useEffect` 依赖 `gameKey`。
+  - `createGame` 透传 `onPlayerDeath: () => setIsGameOver(true)`。
+  - `<canvas key={gameKey}>` 强制 React 卸载旧 canvas、挂新 canvas,Excalibur 与旧 canvas 绑定的资源随之消失。
+  - "重开"按钮:仅 `setGameKey(k+1)`,不直接调 `disposeGame`,让 `<canvas>` 卸载时自动触发的 `useEffect` cleanup 负责释放 Excalibur 引擎(避免与 Excalibur 内部 `dispose()` 重复释放)。
+  - 半透明遮罩 + "Game Over" + "你被围殴了。" + "重开"按钮,`autoFocus` 让键盘 Enter / Space 也能直接重开。
+  - 遮罩 `onPointerDown stopPropagation` 阻断外层 canvas 接收输入。
+- [x] `styles/app.css` 新增 `.game-over-*` 系列:overlay(全屏 fixed + fade-in 动画)、panel(居中卡片 + 阴影 + 边框)、title / subtitle / button(hover / focus-visible 状态齐备)。
+- [x] `vp check` 0 退出(22 files format / 14 files lint+typecheck)。
+- [x] `vp test --run` 19/19 通过(回归无破坏)。
+- [x] `vp build` 通过(`dist/index.html` 0.45 kB + js 727 kB / gzip 201 kB,Excalibur bundle size 软警告属正常)。
+- [x] 浏览器手测(无头 Chromium,`vp dev` 跑在 :5173,3 次死亡+重开循环):
+  - Check 1 自然死亡:刷新 → 站住不动 ~6s → 玩家被围殴至 0 血,`hp=0 isDead=true clockRunning=false overlayShown=true`,全部 enemies 冻结 (`vel=0,0`)。
+  - Check 2 重开:点"重开" → `setGameKey(k+1)` → React 卸载旧 canvas,Excalibur cleanup 跑 disposeGame → 新 canvas 挂载 → `useEffect` 重建引擎 → 玩家满血位置 (0,0)、`clockRunning=true`、新 `enemyCount=4`(刚刷新几秒)、无 overlay。
+  - Check 3 反复死/开:3 次循环全部 `errors: []`(无 console error / unhandled rejection),`canvasCount` 始终 = 1,无 canvas 残留,Excalibur `engine._disposed=true` 且新引擎 `_disposed=false` 互不干扰。
+  - 截图确认:Game Over 面板居中显示在场景之上,半透明遮罩可见下层敌人冻结状态。
 
 ## M0.6 Enemy 击杀 → 销毁
 
 - [ ]
+
 - [ ]
 
 ## M0.7 玩家 ↔ Enemy 击杀通讯 + 投射物命中事件(给 M1 留口)
