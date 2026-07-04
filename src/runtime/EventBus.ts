@@ -15,11 +15,14 @@
  *    都直接用同一个实现,不提供 mock。
  *
  * 当前事件字典(逐步扩展):
- *  - `input:move`   — Input 模块每帧最多发一次(松开归零时也发)。
- *  - `input:fire`   — Input 模块边沿触发,按下瞬间发一次。
- *  - `input:pause`  — Input 模块边沿触发,按下瞬间发一次。
+ *  - `input:move`     — Input 模块每帧最多发一次(松开归零时也发)。
+ *  - `input:fire`     — Input 模块边沿触发,按下瞬间发一次。
+ *  - `input:pause`    — Input 模块边沿触发,按下瞬间发一次。
+ *  - `player:moved`   — Player 模块阈值触发(vel 变化或位移超阈值),不每帧发。
+ *  - `player:damaged` — Player 模块在 `applyDamage` 实际扣血时发。
+ *  - `player:died`    — Player 模块 HP 降到 0 时发一次。
  *
- * 后续模块(Combat / Player / Progression / …)落位时,**只往 `GameEventMap` 里
+ * 后续模块(Combat / Progression / …)落位时,**只往 `GameEventMap` 里
  * 加新条目**,不改这里的事件派发机制。
  */
 
@@ -47,13 +50,46 @@ export interface InputPauseEvent {
   pressed: true;
 }
 
+/** `player:moved` — 玩家位置 / 朝向"显著"变化时发(不每帧发,见 plan/modules/player.md §3)。 */
+export interface PlayerMovedEvent {
+  type: "player:moved";
+  /** 玩家当前世界坐标。 */
+  x: number;
+  y: number;
+  /**
+   * 当前面向角(弧度)。`{x:1,y:0}` 对应 0,`{x:0,y:1}` 对应 +π/2。
+   * 当 `facing` 是零向量时(玩家没移动且鼠标正中心)这里用 `0` 兜底。
+   */
+  facing: number;
+}
+
+/** `player:damaged` — `applyDamage` 实际扣血时发,死亡也算最后一次扣血(在 `player:died` 之前发)。 */
+export interface PlayerDamagedEvent {
+  type: "player:damaged";
+  /** 扣血后剩余 HP(已 clamp 到 `[0, maxHp]`)。 */
+  hp: number;
+  /** HP 上限,订阅者(典型:HUD)用 `hp/maxHp` 算百分比。 */
+  maxHp: number;
+  /** 伤害来源原始 payload,本模块**不**解释。 */
+  from?: unknown;
+}
+
+/** `player:died` — 玩家 HP 归 0 时发一次,GameScene 切到 `gameover` 由此触发。 */
+export interface PlayerDiedEvent {
+  type: "player:died";
+  /** 死亡时刻(逻辑时间,毫秒;走 `RuntimePort.now()`)。 */
+  at: number;
+}
+
 /** 已知事件字典;新事件往这里加,`GameEvent = keyof GameEventMap`。 */
 export interface GameEventMap {
   "input:move": InputMoveEvent;
   "input:fire": InputFireEvent;
   "input:pause": InputPauseEvent;
+  "player:moved": PlayerMovedEvent;
+  "player:damaged": PlayerDamagedEvent;
+  "player:died": PlayerDiedEvent;
 }
-
 /** 任意已知事件(联合类型),emit / on 接受的形态。 */
 export type GameEvent = GameEventMap[keyof GameEventMap];
 
