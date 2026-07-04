@@ -23,10 +23,13 @@
 interface CameraPort {
   pos(): Vec2; // 当前摄像机世界坐标(左上角)
   viewportSize(): Vec2; // 视口尺寸(像素)
+  isOnScreen(worldPos: Vec2): boolean; // 给 Combat / Enemy 做屏幕外裁剪用:返回 worldPos 是否落在当前摄像机可见矩形内(被 mapBounds 截断)
   // 注意:本模块不暴露 setPos() / setFollow() —— 跟随规则是模块内部不变量,
   // 任何模块"想移动摄像机"的诉求都通过 PlayerPort.pos() 改变玩家位置实现。
 }
 ```
+
+`isOnScreen` 的实现直接复用 `§5 CameraController.computeCameraPos` 的几何,等价于 `clampRange.contains(worldPos)`,其中 `clampRange` 由 `viewportSize + mapBounds` 派生。这样所有"摄像机相关"的几何(可见区域、裁剪、跟随)都集中在 Camera 模块一处,Combat / Enemy 不需要自己再算一遍。
 
 `Vec2` 在 `runtime/types.ts` 集中定义。
 
@@ -91,7 +94,8 @@ function computeCameraPos(playerPos: Vec2, mapBounds: Rect, viewport: Vec2): Vec
 
 **被消费**(本模块对外):
 
-- `CameraPort` 被 `HudUi` 通过 `ctx.camera` 读(用于小地图 / 边缘提示);首版可只读 `ctx.camera`,不强求依赖 `CameraPort`。
+- `CameraPort` 被 `HudUi` 通过 `ctx.camera` 读 `pos` / `viewportSize`(用于小地图 / 边缘提示);首版可只读 `ctx.camera`,不强求依赖 `CameraPort`。
+- `CameraPort.isOnScreen(worldPos)` 被 `Combat` / `Enemy` 在做屏幕外裁剪时调(可选优化,首版不强制):子弹飞出一屏就不算命中、敌人在视口外就不跑 AI —— 走 CameraPort 而不是 RuntimePort.viewportSize(),避免"摄像机跟随"和"屏幕外裁剪"两边各自维护一套可见区域几何。
 
 ---
 
