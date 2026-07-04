@@ -12,6 +12,34 @@
 
 ---
 
+## 落地进度
+
+| 模块                  | 状态      | 落地日期   | 验收                                 |
+| --------------------- | --------- | ---------- | ------------------------------------ |
+| **M1 Module-Runtime** | ✅ 第一版 | 2026-07-04 | vitest + tsc + vp check 全绿         |
+| **M2 Module-Input**   | ✅ 第一版 | 2026-07-04 | vitest(84 用例)+ tsc + vp check 全绿 |
+| M3 Module-Player      | ⬜ 未开始 | —          | —                                    |
+| M4 Module-Combat      | ⬜ 未开始 | —          | —                                    |
+| M5 Module-Enemy       | ⬜ 未开始 | —          | —                                    |
+| M6 Module-Progression | ⬜ 未开始 | —          | —                                    |
+| M7 Module-RewardShop  | ⬜ 未开始 | —          | —                                    |
+| M8 Module-HudUi       | ⬜ 未开始 | —          | —                                    |
+| M9 Module-MapObstacle | ⬜ 未开始 | —          | —                                    |
+| M10 Module-Camera     | ⬜ 未开始 | —          | —                                    |
+
+**粘合层进度:**
+
+| 文件                               | 状态 | 说明                                                            |
+| ---------------------------------- | ---- | --------------------------------------------------------------- |
+| `src/runtime/types.ts`             | ✅   | `Vec2 / ActorId / ActorSpec / SceneSpec / HitResult / InputKey` |
+| `src/runtime/ports/RuntimePort.ts` | ✅   | Runtime 完整 Port                                               |
+| `src/runtime/ports/InputPort.ts`   | ✅   | Input 完整 Port                                                 |
+| `src/runtime/EventBus.ts`          | ✅   | 强类型总线,首批事件 `input:*`                                   |
+| `src/runtime/GameContext.ts`       | ⬜   | 暂无模块用,等首个消费者                                         |
+| `src/runtime/RootContainer.ts`     | ⬜   | 等至少 2 个模块落地后做装配                                     |
+
+---
+
 ## 0. 起点声明:从零开始,不复用旧实现
 
 > 本路线是**全新基线**。仓库里现存的 `src/game/scene.ts` / `src/game/balance.ts` / `src/game/weapons/*` / `src/game/components/*` / `src/pages/Game.tsx` / `src/pages/Home.tsx` / `src/styles/app.css` / `src/assets/*` 全部视为**已废弃的脚手架**,**不**被新模块复用、不被新模块参考、也不被新模块"渐进式改造"——它们的存在只是为了让仓库在重写期间还能 `pnpm dev` 跑起来。

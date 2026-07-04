@@ -59,3 +59,14 @@ export interface HitResult {
   normal: Vec2;
   distance: number;
 }
+
+/**
+ * 按键意图(模块间共享的"逻辑按键"字面量联合)。
+ *
+ * 设计原则:
+ *  - **不**绑定具体物理键位(W/A/S/D / Space / 等),而是用语义名。
+ *  - 物理键位 → 语义键的映射在 `modules/input/internal/KeyboardMap` 里完成。
+ *  - 这样 Player / Progression 等模块只引用 `InputKey`,换键位不影响它们。
+ *  - 联合放在 `runtime/types.ts` 是因为它是"协议层"的一部分,不属于任何业务模块。
+ */
+export type InputKey = "up" | "down" | "left" | "right" | "fire" | "pause";

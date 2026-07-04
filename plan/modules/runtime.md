@@ -4,6 +4,20 @@
 
 ---
 
+## 状态:✅ 第一版已落地(2026-07-04)
+
+实现文件:
+
+- Port: [`../../src/runtime/ports/RuntimePort.ts`](../../src/runtime/ports/RuntimePort.ts)
+- 类型: [`../../src/runtime/types.ts`](../../src/runtime/types.ts)
+- 模块装配: [`../../src/modules/runtime/RuntimeModule.ts`](../../src/modules/runtime/RuntimeModule.ts)
+- 内部子模块: [`../../src/modules/runtime/internal/`](../../src/modules/runtime/internal/)(`EngineFactory` / `FrameClock` / `ObjectPool` / `CollisionLayerManager`)
+- Mock 工厂: [`../../src/modules/runtime/__mocks__/mockRuntime.ts`](../../src/modules/runtime/__mocks__/mockRuntime.ts)
+
+测试:见 [`../../src/modules/runtime/__mocks__/mockRuntime.test.ts`](../../src/modules/runtime/__mocks__/mockRuntime.test.ts) 与 [`../../src/modules/runtime/internal/ObjectPool.test.ts`](../../src/modules/runtime/internal/ObjectPool.test.ts),`pnpm exec vitest run` 全绿。
+
+---
+
 ## 0. 一句话理解 Runtime
 
 Runtime = **引擎胶水层**。它的全部存在意义,是把 Excalibur 这套相对底层、命令式的游戏引擎 API,**包成一个最小、最干净、最容易"假装不在"的接口**,然后塞给其他 8 个模块用。

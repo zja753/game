@@ -4,6 +4,33 @@
 
 ---
 
+## 状态:✅ 第一版已落地(2026-07-04)
+
+实现文件:
+
+- Port: [`../../src/runtime/ports/InputPort.ts`](../../src/runtime/ports/InputPort.ts)
+- 事件: [`../../src/runtime/EventBus.ts`](../../src/runtime/EventBus.ts)(共享,见 modular-roadmap §2.1)
+- 模块装配: [`../../src/modules/input/InputModule.ts`](../../src/modules/input/InputModule.ts)
+- 子模块:
+  - [`../../src/modules/input/internal/KeyboardMap.ts`](../../src/modules/input/internal/KeyboardMap.ts)
+  - [`../../src/modules/input/internal/MouseMap.ts`](../../src/modules/input/internal/MouseMap.ts)
+  - [`../../src/modules/input/internal/IntentNormalizer.ts`](../../src/modules/input/internal/IntentNormalizer.ts)
+- Mock 工厂: [`../../src/modules/input/__mocks__/mockInput.ts`](../../src/modules/input/__mocks__/mockInput.ts)
+
+测试:84 个用例通过(7 个测试文件),见 §6。`pnpm exec vitest run` / `pnpm exec vp check` 全绿。
+
+与原计划的小偏差(均不影响接口语义):
+
+1. `InputPort` **新增**了 `mousePos(): Vec2`,以配合 `axisAim(screenPos)` 形式:
+   调用方写 `input.axisAim(input.mousePos())` 即可用上最近一次 `mousemove` 的位置。
+   避免 Player / Progression 反向 import `MouseMap`。
+2. `MouseMap` 暴露了 `buttonsDown()` 与 `MouseButton` 位掩码(接口预留),即便当前 `InputKey`
+   没有"鼠标开火"——后续若开火改鼠标不需要再动 `MouseMap`。
+3. `KeyboardMap` 暴露了 `clear()`(供 `InputModule` 在 `window.blur` 时调),防止 alt-tab 后
+   "按着的键"留在 `held` 里变成幽灵输入。**不**影响 `enable / disable` 的语义。
+
+---
+
 ## 1. 职责
 
 键盘 / 鼠标 → 归一化为 `InputIntent` 事件和实时查询接口。**不**做游戏响应。
