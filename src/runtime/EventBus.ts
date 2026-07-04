@@ -21,6 +21,10 @@
  *  - `player:moved`   — Player 模块阈值触发(vel 变化或位移超阈值),不每帧发。
  *  - `player:damaged` — Player 模块在 `applyDamage` 实际扣血时发。
  *  - `player:died`    — Player 模块 HP 降到 0 时发一次。
+ *  - `projectile:hit` — Combat 模块投射物命中目标时发(HUD 命中反馈)。
+ *  - `enemy:killed`   — Combat 模块判定致死时发(Progression 累加 XP)。
+ *  - `enemy:spawned`  — Enemy 模块生成敌人时发(Combat 同步列表用)。
+ *  - `enemy:dying`    — Enemy 模块敌人血归零时发(广播用,Combat 不订阅)。
  *
  * 后续模块(Combat / Progression / …)落位时,**只往 `GameEventMap` 里
  * 加新条目**,不改这里的事件派发机制。
@@ -81,6 +85,50 @@ export interface PlayerDiedEvent {
   at: number;
 }
 
+/** `projectile:hit` — 投射物命中目标时发(HUD 渲染命中反馈 / 数字飘字)。 */
+export interface ProjectileHitEvent {
+  type: "projectile:hit";
+  /** 命中世界坐标(像素)。 */
+  x: number;
+  y: number;
+  /** 目标种类(`EnemyKind` 字符串,本模块不解释)。 */
+  targetKind: string;
+  /** 本次伤害值。 */
+  damage: number;
+  /** 本次是否击杀。 */
+  isKill: boolean;
+}
+
+/** `enemy:killed` — 投射物命中致死时发,由 Combat 广播(plan §7 双发语义)。 */
+export interface EnemyKilledEvent {
+  type: "enemy:killed";
+  /** 敌人种类(由 Enemy 模块发出 `enemy:dying` 时携带,Combat 透传)。 */
+  kind: string;
+  /** 死亡时世界坐标(像素)。 */
+  x: number;
+  y: number;
+  /** 本次击杀奖励的经验值(plan §3.4);Progression 订阅累加。 */
+  xp: number;
+}
+
+/** `enemy:spawned` — Enemy 模块生成敌人时发,Combat 订阅用来同步列表(可选优化)。 */
+export interface EnemySpawnedEvent {
+  type: "enemy:spawned";
+  id: number;
+  kind: string;
+  x: number;
+  y: number;
+}
+
+/** `enemy:dying` — Enemy 模块敌人血归零时发,Combat **不**订阅(由 `DamageOutcome.isKill` 同步拿结果)。 */
+export interface EnemyDyingEvent {
+  type: "enemy:dying";
+  id: number;
+  kind: string;
+  x: number;
+  y: number;
+}
+
 /** 已知事件字典;新事件往这里加,`GameEvent = keyof GameEventMap`。 */
 export interface GameEventMap {
   "input:move": InputMoveEvent;
@@ -89,6 +137,10 @@ export interface GameEventMap {
   "player:moved": PlayerMovedEvent;
   "player:damaged": PlayerDamagedEvent;
   "player:died": PlayerDiedEvent;
+  "projectile:hit": ProjectileHitEvent;
+  "enemy:killed": EnemyKilledEvent;
+  "enemy:spawned": EnemySpawnedEvent;
+  "enemy:dying": EnemyDyingEvent;
 }
 /** 任意已知事件(联合类型),emit / on 接受的形态。 */
 export type GameEvent = GameEventMap[keyof GameEventMap];

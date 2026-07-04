@@ -7,7 +7,7 @@
  *  - Player 模块自身也**不**直接被 import,根容器在装配时把它作为
  *    `PlayerPort` 注入到 Combat / Enemy / Camera / HudUi 等模块。
  */
-import type { Vec2 } from "../types";
+import type { ActorId, Vec2 } from "../types";
 
 /**
  * `BuffSpec` — 被动叠加的 buff 描述(M6+ 用,见 plan/modules/player.md §2)。
@@ -58,6 +58,14 @@ export type DamageSource = unknown;
  *    (重开 / 切关时调用)。
  */
 export interface PlayerPort {
+  /**
+   * 玩家 ActorId(由根容器在 spawn 后通过 `PlayerModule` 暴露的 `__setId`
+   * 注入;Combat 用来作 `tryFire` 的 `ownerId`)。
+   *
+   * 注入前返回 `0`(占位);真实装配时必须在 `runtime.spawnActor` 拿到
+   * 玩家 id 后立刻调一次 `__setId(id)`。
+   */
+  id(): ActorId;
   /** 当前世界坐标(像素)。 */
   pos(): Vec2;
   /**

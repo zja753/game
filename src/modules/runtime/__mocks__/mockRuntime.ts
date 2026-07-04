@@ -5,8 +5,8 @@
  * 的单测需要 stub 掉 Runtime 的 `spawnActor` / `onTick` / `objectPool`,而不是真的起
  * Excalibur Engine。这个工厂就是干这个的:
  *
- *  - `spawnActor` 返回递增整数 id,不创建 Actor(调用方传一个 spy 自己收 spec 即可)。
- *  - `onTick` 把订阅者塞进 Set,`emitTick(dt)`(本工厂独有)由测试驱动广播。
+ *  - `spawnActor` 按真实 Engine 路径 `new spec.kind(spec.config)` 实例化,
+ *    加进 `spawnedInstances` map 供测试驱动(默认 Excalibur 在 mock 下不真跑)。
  *  - `now()` 返回 0(可手动 `setNow(ms)`),不需要 Engine。
  *  - `objectPool` 内部就是一个真正的 `ObjectPool`,保留验收测试。
  *  - `collision.addLayer` / `raycast` no-op + return null。
@@ -38,9 +38,17 @@ export interface MockRuntimeHandle extends RuntimePort {
   readonly spawned: ReadonlyArray<ActorSpec<unknown>>;
   /** 注入的 despawn id 列表。 */
   readonly despawned: ReadonlyArray<ActorId>;
+  /**
+   * mock 路径下**实例化出来的** actor(id → instance),供测试驱动
+   * `onCollisionStart` / `onPreUpdate` 等实例方法用。
+   *
+   * 注:真实 Engine 路径下 Excalibur 自己 `new spec.kind(spec.config)` 并
+   * 把实例放 scene;mock 路径下复刻这个行为。`new` 抛错时(如依赖浏览器全局)
+   * 该 id 映射到 `null`,测试可跳过。
+   */
+  readonly spawnedInstances: ReadonlyMap<ActorId, unknown>;
   /** 已注册的 layer pair 列表(顺序无关,但用于断言 addLayer 被调到过)。 */
   readonly layersAdded: ReadonlyArray<readonly [string, string]>;
-  /** 手动推进时钟(毫秒);同步触发所有 onTick 订阅者。 */
   emitTick(dt: number): void;
   /** 手动设 now()。 */
   setNow(ms: number): void;
@@ -59,6 +67,7 @@ export function createMockRuntime(opts: MockRuntimeOptions = {}): MockRuntimeHan
   let vh = opts.viewportHeight ?? 600;
   const spawned: ActorSpec<unknown>[] = [];
   const despawned: ActorId[] = [];
+  const spawnedInstances = new Map<ActorId, unknown>();
   const layersAdded: Array<readonly [string, string]> = [];
   const tickSubs = new Set<(dt: number) => void>();
   const pools = new Map<string, RuntimePool<unknown>>();
@@ -79,8 +88,18 @@ export function createMockRuntime(opts: MockRuntimeOptions = {}): MockRuntimeHan
     now: () => nowMs,
 
     spawnActor<TConfig>(spec: ActorSpec<TConfig>): ActorId {
+      // mock 路径下**也**按真实 Engine 路径 `new spec.kind(spec.config)` 实例化
+      // actor(让 onCollisionStart / onPreUpdate 这类 actor 内部方法可被测试驱动)。
+      // 实例化抛错时(actor 类依赖浏览器 API)走 fallback:只记 spec 推一个递增 id。
+      let instance: unknown = null;
+      try {
+        instance = new spec.kind(spec.config);
+      } catch {
+        instance = null;
+      }
       const id = nextId++;
       spawned.push(spec as ActorSpec<unknown>);
+      spawnedInstances.set(id, instance);
       return id;
     },
 
@@ -148,6 +167,7 @@ export function createMockRuntime(opts: MockRuntimeOptions = {}): MockRuntimeHan
       nowMs = 0;
       spawned.length = 0;
       despawned.length = 0;
+      spawnedInstances.clear();
       layersAdded.length = 0;
       tickSubs.clear();
       pools.clear();
@@ -159,6 +179,9 @@ export function createMockRuntime(opts: MockRuntimeOptions = {}): MockRuntimeHan
     },
     get despawned() {
       return despawned;
+    },
+    get spawnedInstances() {
+      return spawnedInstances;
     },
     get layersAdded() {
       return layersAdded;

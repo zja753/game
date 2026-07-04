@@ -70,3 +70,15 @@ export interface HitResult {
  *  - 联合放在 `runtime/types.ts` 是因为它是"协议层"的一部分,不属于任何业务模块。
  */
 export type InputKey = "up" | "down" | "left" | "right" | "fire" | "pause";
+
+/**
+ * 武器 ID(plan/modules/combat.md §2 武器字面量联合)。
+ *
+ * 设计原则:联合放在 `runtime/types.ts` 是因为它**既**被 `CombatPort` 接口
+ * 引用(供其他模块按 ID 切换),**也**被 Combat 模块自己的 `WeaponRegistry`
+ * 用作 key 索引 —— 属于"协议层共享类型",与 `InputKey` 同级。
+ *
+ * 第一版只有 `pistol`(完全复刻土豆兄弟首关开局武器);后续改造
+ * 在此联合上加新字面量。
+ */
+export type WeaponId = "pistol";

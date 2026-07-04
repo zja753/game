@@ -8,9 +8,11 @@ export type { PlayerPort, BuffSpec, DamageSource } from "../../runtime/ports/Pla
 export type { PlayerModuleDeps, PlayerPortFactory } from "./PlayerModule";
 export { createPlayerModule, PLAYER_COLLISION_LAYER, PLAYER_CONTACT_LAYER } from "./PlayerModule";
 
-// Mocks:供 Player 自己的单测 + 后续模块(Combat / Enemy / Camera)单测使用,
-// stub MapObstaclePort / CombatPort 即可。模块上线后,MapObstacle / Combat
-// 的 `__mocks__/` 会成为正式版本;当前这两个 stub 留作早期接入。
+// Mocks:供 Player 自己的单测使用,stub MapObstaclePort / CombatPort 即可。
+// MapObstacle / Combat 模块上线后,这边的 `mockMapObstacle` / `mockCombat`
+// 留作"早期接入的轻量 stub"(只覆盖 Player 测试需要的最小子集,避免
+// 引入 Enemy / Runtime / 等模块的依赖);Combat 模块的正式 mock 在
+// `src/modules/combat/__mocks__/`。
 export { createMockMapObstacle } from "./__mocks__/mockMapObstacle";
 export type { MockMapObstacleHandle, MockMapObstacleOptions } from "./__mocks__/mockMapObstacle";
 export { createMockCombat } from "./__mocks__/mockCombat";

@@ -18,7 +18,7 @@
  *  - 发出 `player:moved` / `player:damaged` / `player:died`。
  *  - **不**发 `level:phase`(那是 Progression 的职责)。
  */
-import type { Vec2 } from "../../runtime/types";
+import type { ActorId, Vec2 } from "../../runtime/types";
 import type { GameEventBus } from "../../runtime/EventBus";
 import type { RuntimePort } from "../runtime";
 import type { InputPort } from "../input";
@@ -106,18 +106,19 @@ const MOVED_ANGLE_THRESHOLD = 0.05;
  *     `config` 由本工厂**外部** build(`buildActorConfig`),根容器需要先调它。
  *  3. 根容器 `runtime.collision.addLayer("player", "wall")` 之类的注册要在 spawn **之前**完成。
  *  4. 业务模块 `new XxxModule({ player: port })` 拿到这个 Port。
- *  5. 销毁:根容器生命 = 进程生命,本模块**不**主动 dispose;若测试 / HMR 路径
- *     需要,可以调返回对象上的 `__dispose` 反订阅 onTick + 摘事件。
+ *  5. 根容器拿到 spawn 的 id 后,调 `port.__setId(id)` 注入 Combat 用的 ownerId。
  */
 export const createPlayerModule: PlayerPortFactory = (deps) => {
   const initial: Vec2 = deps.initialPos ?? { x: 0, y: 0 };
 
+  // ---- 0. 玩家 ActorId
+  // M4 Module-Combat 起,Combat 走 `tryFire(now, ownerId, origin)` 三参
+  // 版本(`plan/modules/combat.md §2`),`ownerId` 由 Player 传。
+  // 注入前 = 0(占位);真实装配时必须在 `runtime.spawnActor` 拿到玩家
+  // id 后立刻调一次 `__setId(id)`。
+  let playerId: ActorId = 0;
+
   // ---- 0. Collision group 注册 ----
-  // 设计原则(plan §6 解耦铁律 + §0.4):CollisionGroupManager 是 Excalibur 的
-  // **全局** 单例状态,跨模块共享。属于"根容器"装配阶段的副作用,**不**属于
-  // 玩家模块本身 —— 否则多次调用 `createPlayerModule`(测试 / HMR)会撞
-  // `existing group with different mask`。
-  //
   // 真实 `addLayer("player", "wall")` / `addLayer("player", "enemy")` 由
   // MapObstacle / Progression 模块在装配阶段调 `runtime.collision.addLayer`
   // 完成,本模块不碰。Layer 名字常量(`PLAYER_COLLISION_LAYER` /
@@ -218,11 +219,14 @@ export const createPlayerModule: PlayerPortFactory = (deps) => {
 
   const offInputFire = deps.bus.on("input:fire", () => {
     if (actor.isDead()) return;
-    deps.combat.tryFire();
+    // M4 Module-Combat:tryFire 改三参(now, ownerId, origin) — 由 Player
+    deps.combat.tryFire(deps.runtime.now(), playerId, actor.getPos());
   });
 
   // ---- 7. 公开的 Port ----
+
   const port: PlayerPort = {
+    id: () => playerId,
     pos: () => actor.getPos(),
     setPos: (v) => actor.setPos(v),
 
@@ -245,21 +249,24 @@ export const createPlayerModule: PlayerPortFactory = (deps) => {
     },
   };
 
-  // ---- 8. 内部 dispose(测试 / HMR 路径) ----
   // 业务模块**不**该用 — 用完就破坏 Player 模块的封装。
   const portWithDispose = port as PlayerPort & {
     __dispose: () => void;
     __actor: PlayerActor;
     __setEnabled: (v: boolean) => void;
+    __setId: (id: ActorId) => void;
   };
+  portWithDispose.__actor = actor;
   portWithDispose.__dispose = (): void => {
     offTick();
     offInputMove();
     offInputFire();
   };
-  portWithDispose.__actor = actor;
   portWithDispose.__setEnabled = (v: boolean): void => {
     enabled = v;
+  };
+  portWithDispose.__setId = (id: ActorId): void => {
+    playerId = id;
   };
 
   return port;
