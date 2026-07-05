@@ -1,0 +1,210 @@
+/*
+ * HudUi 模块样式。
+ *
+ * 设计原则:
+ *  - 自包含:HUD 的所有 DOM 节点默认 `position: fixed`,不依赖宿主页面布局;
+ *    RootContainer 在装配阶段把 `<HudRoot>` 挂到 `<body>` 上(或任何
+ *    `position: relative/fixed` 的容器内,overlays 自身是 fixed)。
+ *  - 与 Excalibur canvas 共存:HUD `pointer-events: none`,只让交互区(按钮 / 卡片)
+ *    设置 `pointer-events: auto`,避免遮蔽 canvas 上的鼠标事件(玩家需要瞄准发射
+ *    时鼠标穿透顶条 / overlay 半透明区)。
+ *  - 颜色:深色基底 + 半透明,与 `styles/app.css` 深色主题保持一致。
+ */
+
+.hud-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  color: #ececec;
+}
+
+/* ---- 顶条(running / levelup_modal / portal / shop 下都可见) ---- */
+
+.hud-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  pointer-events: none;
+}
+
+.hud-topbar > * {
+  pointer-events: auto;
+}
+
+.hud-health,
+.hud-xp,
+.hud-timer,
+.hud-level,
+.hud-weapon,
+.hud-kills {
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  min-width: 60px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.hud-health {
+  flex: 0 1 220px;
+  text-align: left;
+}
+
+.hud-health__fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, #d04848 0%, #a02424 100%);
+  transition: width 80ms linear;
+}
+
+.hud-health__label {
+  position: relative;
+  z-index: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-timer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.hud-timer__total {
+  opacity: 0.6;
+  margin-left: 0.25rem;
+}
+
+/* ---- overlays(全部 fixed 中央遮罩)---- */
+
+.hud-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.65);
+  padding: 1.5rem;
+  gap: 1rem;
+}
+
+.hud-overlay__title {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+}
+
+.hud-overlay__hint {
+  margin: 0;
+  opacity: 0.7;
+}
+
+.hud-overlay__cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 0.75rem;
+  max-width: 720px;
+  width: 100%;
+}
+
+.hud-card {
+  background: rgba(20, 24, 32, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: inherit;
+  font: inherit;
+  padding: 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.hud-card:hover {
+  border-color: #4cc9f0;
+}
+
+.hud-card__name {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.hud-card__desc {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.hud-card__price {
+  font-size: 0.85rem;
+  color: #f0c14b;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-card__id {
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+/* levelup_modal 让世界仍可见 —— 遮罩背景更透。 */
+.hud-root--levelup .hud-overlay--levelup,
+.hud-root--shop .hud-overlay--shop {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* gameover / victory 全屏遮罩 + GameOver 标题偏大。 */
+
+.hud-root--gameover .hud-overlay--gameover,
+.hud-root--victory .hud-overlay--victory {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.hud-overlay__stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-overlay__stats dt {
+  opacity: 0.65;
+}
+
+.hud-overlay__stats dd {
+  margin: 0;
+}
+
+/* character_select 角色列表占位。 */
+
+.hud-overlay__characters {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.hud-overlay__character {
+  padding: 0.5rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  background: rgba(20, 24, 32, 0.9);
+}

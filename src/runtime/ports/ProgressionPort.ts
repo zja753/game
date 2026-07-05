@@ -76,6 +76,30 @@ export interface ProgressionPort {
    * 副作用:同 `player:died`(切到 `gameover` scene),`RunStats` 字段标记"主动弃局"。
    */
   endRun(): void;
+  /**
+   * 重开:从 `gameover` / `victory` scene 回 `character_select`(roadmap §1 转移表
+   * "`any → gameover`" 的反向 + progression.md §2)。
+   *
+   * 触发源:HUD 在 `gameover` / `victory` 面板上显示"再来一局"按钮,
+   * 玩家点击时调本方法。内部完成 stats reset / stage 归 1 / clock.stop /
+   * 广播 `level:phase { scene: "character_select" }`。
+   *
+   * 注:roadmap §1 表格注释"`pickCharacter` → running"指从 character_select
+   * 切到 running;`startRun` 是"准备开一局"前置(回 character_select)。
+   */
+  startRun(): void;
+
+  /**
+   * 当前关卡 stage(1-based;**不**同 `level()` —— `level()` 是玩家升级等级,
+   * `stage()` 是关卡)。
+   *
+   * 关卡切换时(`shop → running(下一关)`)由 Progression 内部 +1;`startRun`
+   * 时归 1。
+   *
+   * 加在 Port 上是因为 HUD 小地图 / "关卡 X" 提示会读这个;Enemy 模块
+   * 不需要(它从 `currentLevelConfig()` 拿自己关心的字段)。
+   */
+  stage(): number;
 
   /**
    * "下一关"申请:portal → shop / shop → running(下一关,progression.md §2)。

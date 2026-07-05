@@ -37,6 +37,8 @@ export interface MockProgressionHandle extends ProgressionPort {
   readonly endRunCount: number;
   /** spy:被调过的 `advance` 次数。 */
   readonly advanceCount: number;
+  /** spy:被调过的 `startRun` 次数。 */
+  readonly startRunCount: number;
   /** spy:`pickCharacter` 被调用的入参列表(测试断言"传了哪个 id")。 */
   readonly pickedCharacters: ReadonlyArray<CharacterId>;
 
@@ -76,8 +78,9 @@ export function createMockProgression(opts: MockProgressionOptions = {}): MockPr
   let pauseToggleCount = 0;
   let endRunCount = 0;
   let advanceCount = 0;
+  let startRunCount = 0;
+  let stageVal = 1;
   const pickedCharacters: CharacterId[] = [];
-
   const port: MockProgressionHandle = {
     level() {
       return level;
@@ -106,10 +109,15 @@ export function createMockProgression(opts: MockProgressionOptions = {}): MockPr
     advance() {
       advanceCount += 1;
     },
+    startRun() {
+      startRunCount += 1;
+    },
+    stage() {
+      return stageVal;
+    },
     pickCharacter(id) {
       pickedCharacters.push(id);
     },
-
     // ---- spy 视图 ----
     get pauseToggleCount() {
       return pauseToggleCount;
@@ -119,6 +127,9 @@ export function createMockProgression(opts: MockProgressionOptions = {}): MockPr
     },
     get advanceCount() {
       return advanceCount;
+    },
+    get startRunCount() {
+      return startRunCount;
     },
     get pickedCharacters() {
       return pickedCharacters.slice();
@@ -145,6 +156,7 @@ export function createMockProgression(opts: MockProgressionOptions = {}): MockPr
       pauseToggleCount = 0;
       endRunCount = 0;
       advanceCount = 0;
+      startRunCount = 0;
       pickedCharacters.length = 0;
     },
   };

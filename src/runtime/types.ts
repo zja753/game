@@ -262,6 +262,14 @@ export interface RewardRegistration {
   /** 名称 / 描述(HUD 渲染用;可选,默认从 Catalog 读)。 */
   name?: string;
   description?: string;
+  /**
+   * 商店基础价格(rewards.md §5 `ShopRoller`:`ShopItem.price` 派生自此)。
+   *
+   * - 仅在 `kind === "shop"` 时有意义;`kind === "levelup"` 时忽略。
+   * - 不传走 `0`(rewards.md §2 注释:"首版可视为 0";M8+ 引入货币时由注册方填)。
+   * - `ShopRoller` 按 `1 + (level - 1) * 0.2` 的乘子上调,向上取整。
+   */
+  price?: number;
 }
 
 /**

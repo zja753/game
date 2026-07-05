@@ -86,21 +86,24 @@ type GameScene =
 
 ---
 
-## 3. 模块清单(每个文档回答两件事:**对外 Port + 自己怎么用别人的能力**)
+**进度快照(2026-07-03 · M8 落地)**:所有第一版模块(契约 + 实现)已全部落库 ✅。联调阶段(§6)尚未启动。
 
-| #   | 模块                                    | 一句话能力                                                       |
-| --- | --------------------------------------- | ---------------------------------------------------------------- |
-| M1  | [Runtime](./modules/runtime.md)         | Excalibur 引擎 + 帧 + Actor 池 + 碰撞层(最底层)                  |
-| M2  | [Input](./modules/input.md)             | 键鼠 → `InputIntent` + 轴/边沿查询(只发事件)                     |
-| M3  | [Player](./modules/player.md)           | 玩家 Actor 生命周期/移动/血量/朝向/受击                          |
-| M4  | [Combat](./modules/combat.md)           | 武器 + 投射物 + 命中 + 击杀事件                                  |
-| M5  | [Enemy](./modules/enemy.md)             | 敌人数据 + AI + 生成调度 + 接触伤害                              |
-| M6  | [Progression](./modules/progression.md) | 场景机 + 经验/升级 + 关卡倒计时 + 传送门编排                     |
-| M7  | [RewardShop](./modules/rewards.md)      | 升级三选一 + 商店商品 + `applyReward` 回调分发                   |
-| M8  | [HudUi](./modules/hud.md)               | React 浮层;按 `level:phase.scene` 切根布局(**唯一无 Port 依赖**) |
-| M9  | [MapObstacle](./modules/obstacle.md)    | 静态地图 + `isBlocked` 查询 + 关卡切换(纯数据)                   |
-| M10 | [Camera](./modules/camera.md)           | 玩家跟随 + 边缘 hard clamp + `isOnScreen` 复用同一份几何         |
+| #   | 模块                                    | 一句话能力                                                       | 契约 | 实现 |
+| --- | --------------------------------------- | ---------------------------------------------------------------- | ---- | ---- |
+| M1  | [Runtime](./modules/runtime.md)         | Excalibur 引擎 + 帧 + Actor 池 + 碰撞层(最底层)                  | ✅   | ✅   |
+| M2  | [Input](./modules/input.md)             | 键鼠 → `InputIntent` + 轴/边沿查询(只发事件)                     | ✅   | ✅   |
+| M3  | [Player](./modules/player.md)           | 玩家 Actor 生命周期/移动/血量/朝向/受击                          | ✅   | ✅   |
+| M4  | [Combat](./modules/combat.md)           | 武器 + 投射物 + 命中 + 击杀事件                                  | ✅   | ✅   |
+| M5  | [Enemy](./modules/enemy.md)             | 敌人数据 + AI + 生成调度 + 接触伤害                              | ✅   | ✅   |
+| M6  | [Progression](./modules/progression.md) | 场景机 + 经验/升级 + 关卡倒计时 + 传送门编排                     | ✅   | ✅   |
+| M7  | [RewardShop](./modules/rewards.md)      | 升级三选一 + 商店商品 + `applyReward` 回调分发                   | ✅   | ✅   |
+| M8  | [HudUi](./modules/hud.md)               | React 浮层;按 `level:phase.scene` 切根布局(**唯一无 Port 依赖**) | ✅   | ✅   |
+| M9  | [MapObstacle](./modules/obstacle.md)    | 静态地图 + `isBlocked` 查询 + 关卡切换(纯数据)                   | ✅   | ✅   |
+| M10 | [Camera](./modules/camera.md)           | 玩家跟随 + 边缘 hard clamp + `isOnScreen` 复用同一份几何         | ✅   | ✅   |
 
+**下一步**:进入联调阶段(§6)。RootContainer 把所有模块拼起来,实现
+`character_select → running → levelup_modal → portal → shop → victory/gameover`
+的浏览器端主循环跑通。
 子文档递归:**自身**进一步拆分时自己开子目录,不再回写到上一层。
 
 ---
