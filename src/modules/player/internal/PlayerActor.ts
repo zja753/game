@@ -27,9 +27,9 @@
  *    写时只写内部字段,渲染读 `actor.pos` —— 走"内部字段 → 同步到
  *    `actor.pos`"单方向流。
  */
-import { Actor, CollisionType, vec, Vector } from "excalibur";
-import type { Vec2 } from "../../../runtime/types";
+import { Actor, CollisionType, vec, Vector, Color, Rectangle } from "excalibur";
 
+import type { Vec2 } from "../../../runtime/types";
 import { PlayerMover, DEFAULT_PLAYER_SPEED } from "./PlayerMover";
 import type { PlayerMoverDeps } from "./PlayerMover";
 import { HealthController, DEFAULT_PLAYER_MAX_HP } from "./HealthController";
@@ -112,15 +112,25 @@ export class PlayerActor extends Actor {
     this.mover = new PlayerMover({
       obstacles: config.obstacles,
       applyPosition: (p) => this.setPos(p),
-      getPosition: () => this._pos,
+      getPosition: () => this.getPos(),
     });
-    this.facing = new FacingTracker({ input: config.input });
     this.health = new HealthController({
       now: config.now,
       onDamage: config.onDamage,
       onDeath: config.onDeath,
       onBuffAdded: config.onBuffAdded,
     });
+    this.facing = new FacingTracker({ input: config.input });
+
+    // 临时占位视觉(M0:基础矩形)。第一版没 sprite / 动画,画一个绿底小方块;
+    // 后续接入 sprite 时换成 SpriteGraphic。
+    const visual = new Rectangle({
+      width: DEFAULT_HALF_WIDTH * 2,
+      height: DEFAULT_HALF_WIDTH * 2,
+      color: Color.fromHex("#7bd389"),
+    });
+    this.graphics.add(visual);
+    this.graphics.use(visual);
   }
 
   // ---- 权威位姿读 / 写 ----
@@ -150,8 +160,16 @@ export class PlayerActor extends Actor {
 
   override onPreUpdate(engine: unknown, dt: number): void {
     // 注:Excalibur 0.32 `onPreUpdate` 签名是 `(engine, elapsedMs)`。
-    // 我们不用 engine 参数,直接吃 dt。
-    void engine;
+    //
+    // 装配层(`PlayerModule`)在根容器装配时通过 `runtime.onTick(...)` 主动调一次
+    // `onPreUpdate(null, dt)`,用来兼容"没有 Excalibur 引擎"的单测场景。
+    // 真引擎路径下 Excalibur 也会自动调一次 `onPreUpdate(this.engine, dt)`。
+    // 这里区分两个来源:
+    //  - `engine === null` → 装配层手动驱动,**保留**(Mover / Health / Facing tick)。
+    //  - `engine !== null` → Excalibur 自动驱动,**跳过**(避免和装配层重复 tick)。
+    if (engine !== null && engine !== undefined) {
+      return;
+    }
 
     if (this.health.isDead()) {
       // 死亡冻结:不再 tick Mover,不再发 player:moved。

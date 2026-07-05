@@ -15,8 +15,7 @@
  */
 import type { ActorId, ActorSpec, SceneSpec, Vec2 } from "../../runtime/types";
 import type { RuntimePort, RuntimePool } from "../../runtime/ports/RuntimePort";
-import type { Actor } from "excalibur";
-import { Scene } from "excalibur";
+import { Actor, Scene } from "excalibur";
 
 import { ObjectPool } from "./internal/ObjectPool";
 import { FrameClock } from "./internal/FrameClock";
@@ -79,9 +78,24 @@ export const createRuntimeModule: RuntimePortFactory = (deps) => {
     now: () => clock.now(),
 
     spawnActor<TConfig>(spec: ActorSpec<TConfig>): ActorId {
-      const actor = new spec.kind(spec.config);
+      // `spec.config` 兼容两种形态:
+      //  - 普通 config 对象 → `new spec.kind(config)`(Excalibur 自己造 actor);
+      //  - 已经是 `Actor` 实例(根容器复用某个模块预先 new 的实例,如 PlayerModule
+      //    的 PlayerActor —— 它持有 Mover / Health / Facing 闭包,再造一份就失去
+      //    装配层的句柄) → 直接用。
+      // 这里用 `instanceof Actor` 区分,业务模块**不**该依赖这个分支,只 RootContainer
+      // 在拼装 Player 这种"模块内部已构造好实例"时走它。
+      const actor: Actor =
+        spec.config instanceof Actor
+          ? (spec.config as unknown as Actor)
+          : new (spec.kind as new (cfg: TConfig) => Actor)(spec.config);
       // 必须加进 currentScene,引擎才画它、才做物理。
       engine.currentScene.add(actor);
+      // 把 `spec.layer` 映射到 Excalibur CollisionGroup 并挂到 actor.body.group。
+      // 没设 layer = 默认 `CollisionGroup.All`(与 Excalibur 默认一致),不分配新 group。
+      if (spec.layer !== undefined) {
+        actor.body.group = collisions.groupFor(spec.layer);
+      }
       const id = actor.id;
       actors.set(id, actor);
       return id;

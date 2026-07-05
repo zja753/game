@@ -106,28 +106,49 @@ export const createHudUiModule: HudUiPortFactory = (deps) => {
 
   // ---- 1. 公开 Port ----
   let mountedRoot: Root | null = null;
+  /** `show()` 已 schedule 但微任务尚未执行 —— 防重入 + 防 hide→show 重叠。 */
+  let showScheduled = false;
+  /** 模块已 dispose:show 微任务内发现此标志就跳过 createRoot,避免 React StrictMode
+   * dev 下 cleanup() 撞上尚未执行的 mount 队列产生野 root。 */
+  let disposed = false;
 
   /**
    * 把 `<HudRoot>` render 到 `deps.resolveContainer()` 返回的容器。
    * 幂等:已挂载 → no-op;容器不可解析(Node 测试或装配期)→ no-op。
    * Port 的 `show()` **不**带参数 —— 容器由 deps 一次性注入
    * (HudContainerResolver 注释)。
+   *
+   * mount 与 unmount 都 defer 到下一个 microtask:React StrictMode dev 下 effect
+   * 同步跑 `mount → cleanup → mount`,若 createRoot + render 同步发生,React
+   * 第一次 commit 后立刻被 cleanup 同步 unmount 会撞 React 的渲染窗口,报
+   * "Attempted to synchronously unmount a root while React was already rendering"
+   * (RootContainer.ts:296 栈底)。
    */
   function show(): void {
-    if (mountedRoot !== null) return;
+    if (showScheduled || mountedRoot !== null) return;
     const container = (deps.resolveContainer ?? DEFAULT_RESOLVER)();
-    if (container === null) return; // 防御性:Node 测试或装配期没有 DOM 容器时 no-op。
-    mountedRoot = createRoot(container);
-    mountedRoot.render(renderTree());
+    if (container === null) return;
+    showScheduled = true;
+    queueMicrotask(() => {
+      showScheduled = false;
+      if (disposed || mountedRoot !== null) return;
+      mountedRoot = createRoot(container);
+      mountedRoot.render(renderTree());
+    });
   }
 
   /** 摘掉 React 树但保留 store。幂等。 */
   function hide(): void {
-    if (mountedRoot !== null) {
-      mountedRoot.unmount();
-      mountedRoot = null;
-    }
+    if (mountedRoot === null) return;
+    const root = mountedRoot;
+    mountedRoot = null;
     // store 不动;React 卸载,后续 show 时 state 还在(HudUiPort.hide 注释)。
+    // defer unmount 到下一个 microtask:React StrictMode dev 下 effect 双调
+    // (mount→cleanup→mount)的 cleanup 会同步撞上 React commit 窗口,报
+    // "Attempted to synchronously unmount a root while React was already rendering"。
+    queueMicrotask(() => {
+      root.unmount();
+    });
   }
 
   /** 玩家点卡后的回调 → emit `reward:picked`。 */
@@ -140,17 +161,16 @@ export const createHudUiModule: HudUiPortFactory = (deps) => {
     hide,
     pickReward,
   };
-
   // ---- 2. dispose(测试 / HMR 用)----
   const portWithDispose = port as HudUiPort & {
     __dispose: () => void;
     __store: () => HudUiStore;
   };
   portWithDispose.__dispose = (): void => {
+    disposed = true;
     hide();
     bridge.dispose();
   };
-  portWithDispose.__store = (): HudUiStore => store;
 
   return portWithDispose;
 };

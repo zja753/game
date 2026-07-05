@@ -4,14 +4,15 @@
  *
  * 设计要点:
  *  - 用一个 `name -> category` 表 + `category -> 允许命中的 category 集合` 表,
- *    自己维护"哪些 layer 互相能撞"的状态。
+ *    自己维护"哪些 layer 互相能撞"的状态;另维护 `name -> CollisionGroup`
+ *    缓存供 `groupFor` 复用,避免二次走 `CollisionGroupManager.create`。
  *  - `addLayer(a, b)` 是**对**操作:A 的允许列表里加 B,B 的允许列表里加 A。
  *    重复调用幂等(同一个 category 上重复 add 一个同名 layer 不会双开)。
  *  - `raycast` 用 Excalibur 的 `collisionMask` 做后端过滤:把 caller 给的 `layers`
  *    转成 bitmask,丢给 `physics.rayCast`。一个 layer 都没指明(空数组)时,
  *    视作"无过滤",走 Excalibur 默认 `CollisionGroup.All.category = -1`。
- *  - **不**缓存任何 `_mask` / 私有字段;Excalibur 的 `CollisionGroup._mask`
- *    是私有的,我们不碰。我们独占这个 collision group 命名空间,所以
+ *  - **不**缓存 `_mask` / `_category` 之类的内部字段;我们只持有 Excalibur
+ *    给回来的 `CollisionGroup` 引用。我们独占 collision group 命名空间,所以
  *    ctor 里调 `CollisionGroupManager.reset()`。
  *
  * 约束:
@@ -49,6 +50,14 @@ export class CollisionLayerManager {
    * 这里**不**存 layer 自己的 collision mask,我们自己推 raycast 的 mask。
    */
   private readonly categoryToAllowed: Map<number, Set<number>> = new Map();
+
+  /**
+   * layer 名 -> Excalibur `CollisionGroup` 句柄。
+   * 在 `ensureLayer` 第一次见到名字时连同 category 一起缓存,后续 `groupFor`
+   * 直接复用,**不**再走 `CollisionGroupManager.create` —— 否则二次调用会因
+   * `existingGroup.mask !== undefined` 抛 "already exists with a different mask"。
+   */
+  private readonly layerToGroup: Map<string, CollisionGroup> = new Map();
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -136,11 +145,6 @@ export class CollisionLayerManager {
     };
   }
 
-  /**
-   * 注册并返回 layer 的 category。第一次见到才申请 Excalibur 的 group。
-   * `CollisionGroupManager.create(name)` 在同名 + 同 mask 下会复用,
-   * 不会重复分配 category(配合下面 Set 自动去重,实现幂等)。
-   */
   private ensureLayer(name: string): number {
     const existing = this.layerToCategory.get(name);
     if (existing !== undefined) return existing;
@@ -149,10 +153,27 @@ export class CollisionLayerManager {
     const category = group.category;
 
     this.layerToCategory.set(name, category);
+    this.layerToGroup.set(name, group);
     if (!this.categoryToAllowed.has(category)) {
       this.categoryToAllowed.set(category, new Set());
     }
     return category;
+  }
+
+  /**
+   * 注册并返回 layer 的 Excalibur `CollisionGroup`(供 `RuntimeModule.spawnActor`
+   * 给刚生成的 actor 设 `body.group` 用)。
+   *
+   * 幂等:同名 layer 拿到同一份 group(走 `layerToGroup` 缓存,**不**再调
+   * `CollisionGroupManager.create`)。Excalibur 的 manager 在"同名 + mask 不一致"
+   * 时会抛错,而我们 `addLayer` 路径里调过的 `create(name)` 给 group 写入的
+   * mask 是个数字(`~bit`),与 `create(name)` 第二次调用传的 `undefined` 不
+   * 相等 → 必须缓存,不能让 manager 看到第二次调用。
+   */
+  groupFor(name: string): CollisionGroup {
+    this.ensureLayer(name);
+    // `ensureLayer` 已经把 group 缓存进 `layerToGroup`;非空断言安全。
+    return this.layerToGroup.get(name)!;
   }
 
   /** 拿到 layer 对应的 allowed-set;没有就建一个空集。 */

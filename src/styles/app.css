@@ -1,6 +1,6 @@
-/* 占位阶段最小化样式:reset + 居中容器。
-   旧 `.game-canvas` / `.game-over-*` 等已删除,
-   RootContainer + canvas 上线后再按模块化路线 §3.8 的 HUD 样式逐块补回。 */
+/* 全局:reset + 深色主题。
+   game 路由(canvas + HUD)由 `.page-game` / `.game-stage` / `.game-canvas` /
+   `.hud-mount` 共同占满视口,脱离文档流。 */
 
 :root {
   color-scheme: light dark;
@@ -58,4 +58,46 @@ body {
 .page {
   max-width: 640px;
   width: 100%;
+}
+
+/* ---- /game 路由:全屏 Excalibur canvas + HUD 浮层 ---- */
+
+/* 路由组件外壳脱离文档流,撑满视口。 */
+.page-game {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  max-width: none;
+  /* 让 canvas / hud-mount 直接占满,不受 page 居中影响。 */
+}
+
+/* `.game-stage` 是 Game 组件的根 div,内部含 canvas + hud-mount。
+   Excalibur canvas 走 relative,内部 coordinate 是 viewport 像素;HUD
+   overlay 走 fixed 浮在 canvas 上。 */
+.game-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.game-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* canvas 默认是 inline,会留 4px baseline 间隙 —— block 化去掉。 */
+}
+
+/* `.hud-mount` 是 HudUi 的 React 根;它本身不渲染内容,
+   内容由 `<HudRoot>` 渲染成 fixed 浮层(见 hud.css)。
+   这里留个占位 style,确保挂载点不影响布局。 */
+.hud-mount {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
