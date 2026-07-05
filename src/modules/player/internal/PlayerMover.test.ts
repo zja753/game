@@ -39,6 +39,13 @@ function makeObstacles(rects: Array<{ min: Vec2; max: Vec2 }> = []): {
       max: { x: 1000, y: 1000 },
     }),
     loadLevel: () => {},
+    raycast: () => null,
+    playerSpawn: () => ({ x: 500, y: 500 }),
+    portalSpawn: () => ({ x: 950, y: 950 }),
+    level: () => ({
+      id: "level-1",
+      bounds: { min: { x: 0, y: 0 }, max: { x: 1000, y: 1000 } },
+    }),
   };
   return {
     port,

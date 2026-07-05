@@ -25,10 +25,16 @@
  *  - `enemy:killed`   — Combat 模块判定致死时发(Progression 累加 XP)。
  *  - `enemy:spawned`  — Enemy 模块生成敌人时发(Combat 同步列表用)。
  *  - `enemy:dying`    — Enemy 模块敌人血归零时发(广播用,Combat 不订阅)。
+ *  - `xp:gained` / `level:up` / `level:phase` / `timer:tick` / `portal:appeared` — Progression 模块场景 / 经验 / 倒计时。
+ *  - `reward:available` / `reward:applied` / `reward:picked` — RewardShop + HudUi 协作;`picked` 由 HUD 发出。
+ *  - `map:loaded`     — MapObstacle 切关时发(Camera 订阅重算 clamp)。
+ *  - `camera:moved`   — Camera 写完 `Scene.camera.pos` 时发(HUD 小地图)。
  *
- * 后续模块(Combat / Progression / …)落位时,**只往 `GameEventMap` 里
- * 加新条目**,不改这里的事件派发机制。
+ * 后续模块(Progression / RewardShop / HudUi / MapObstacle / Camera …)落位时,
+ * **只往 `GameEventMap` 里加新条目**,不改这里的事件派发机制。
  */
+
+import type { GameScene, LevelId, RewardId, RewardKind, SceneContext } from "./types";
 
 // ---- 事件字典(每个 `type` 对应一个 payload 形状) ----
 
@@ -120,7 +126,7 @@ export interface EnemySpawnedEvent {
   y: number;
 }
 
-/** `enemy:dying` — Enemy 模块敌人血归零时发,Combat **不**订阅(由 `DamageOutcome.isKill` 同步拿结果)。 */
+/** `enemy:dying` — Enemy 模块敌人血归零时发,Combat **不**订阅(由 `DamageResult.isKill` 同步拿结果)。 */
 export interface EnemyDyingEvent {
   type: "enemy:dying";
   id: number;
@@ -141,6 +147,101 @@ export interface GameEventMap {
   "enemy:killed": EnemyKilledEvent;
   "enemy:spawned": EnemySpawnedEvent;
   "enemy:dying": EnemyDyingEvent;
+  "xp:gained": XpGainedEvent;
+  "level:up": LevelUpEvent;
+  "level:phase": LevelPhaseEvent;
+  "timer:tick": TimerTickEvent;
+  "portal:appeared": PortalAppearedEvent;
+  "reward:available": RewardAvailableEvent;
+  "reward:applied": RewardAppliedEvent;
+  "reward:picked": RewardPickedEvent;
+  "map:loaded": MapLoadedEvent;
+  "camera:moved": CameraMovedEvent;
+}
+/** `xp:gained` — 经验获得时发(plan/modules/progression.md §3,Progression 在 `enemy:killed` 后广播)。 */
+export interface XpGainedEvent {
+  type: "xp:gained";
+  /** 本次获得的经验值(可能为 0,如击杀 0 经验敌人)。 */
+  amount: number;
+  /** 累加后的总经验(玩家升级用)。 */
+  total: number;
+}
+
+/** `level:up` — 玩家升级(经验达阈值)时发,与 `level:phase` 到 `levelup_modal` 是同一时刻的两件事(progression.md §3)。 */
+export interface LevelUpEvent {
+  type: "level:up";
+  /** 升级后的玩家等级(1-based)。 */
+  level: number;
+  /** 升级三选一候选 ID 列表(Progression 已从 RewardShop 拉好;HUD 直接渲染)。 */
+  choices: readonly RewardId[];
+}
+
+/** `level:phase` — 场景切换的**唯一信源**(progression.md §3,roadmap §1)。 */
+export interface LevelPhaseEvent {
+  type: "level:phase";
+  scene: GameScene;
+  /** 该 scene 携带的上下文(详见 `SceneContext`,见 runtime/types.ts)。 */
+  context: SceneContext;
+}
+
+/** `timer:tick` — 关卡倒计时每帧发(仅在 `running` scene 下;progression.md §3)。 */
+export interface TimerTickEvent {
+  type: "timer:tick";
+  /** 剩余秒数(浮点;<= 0 时 Progression 切到 `portal` scene)。 */
+  remaining: number;
+  /** 关卡总时长秒数(HUD 显示"剩余 / 总时长"用)。 */
+  total: number;
+}
+
+/** `portal:appeared` — 传送门生成瞬间发 1 次(仅在 `running → portal` 转移;progression.md §3)。 */
+export interface PortalAppearedEvent {
+  type: "portal:appeared";
+  /** 传送门世界坐标(像素)。 */
+  x: number;
+  y: number;
+}
+
+/** `reward:available` — RewardShop 准备好的可选奖励(升级三选一 / 商店物品);HUD 拿到后渲染卡片(rewards.md §3)。 */
+export interface RewardAvailableEvent {
+  type: "reward:available";
+  /** 候选 ID 列表(长度:升级 = 3,商店 = 4~6)。 */
+  ids: readonly RewardId[];
+  /** 是否是商店上下文(true = 商店面板,false = 升级三选一)。 */
+  isShop: boolean;
+}
+
+/** `reward:applied` — 奖励成功应用(注册回调执行完成)时发(rewards.md §3)。 */
+export interface RewardAppliedEvent {
+  type: "reward:applied";
+  id: RewardId;
+  kind: RewardKind;
+}
+
+/** `reward:picked` — 玩家在 HUD 上点击了某个卡片;Progression 订阅后切回 `running` 并调 `RewardShop.applyReward`。
+ *  注意:**本事件由 HudUi 发出**,不是 RewardShop(rewards.md §3 注释:RewardShop **不**订阅此事件)。 */
+export interface RewardPickedEvent {
+  type: "reward:picked";
+  id: RewardId;
+  kind: RewardKind;
+}
+
+/** `map:loaded` — 当前关卡地图被加载 / 切换时发(obstacle.md §3);Camera 订阅它重算 clamp 范围。 */
+export interface MapLoadedEvent {
+  type: "map:loaded";
+  /** 关卡 ID(与 `MapObstaclePort.loadLevel` 的入参一致)。 */
+  level: LevelId;
+}
+
+/** `camera:moved` — 摄像机世界坐标发生变化时发(camera.md §3);HudUi 用来更新小地图 / 屏幕边缘提示。
+ *  注意:不是每帧都发 —— 内部与上一帧位置相同则不广播。 */
+export interface CameraMovedEvent {
+  type: "camera:moved";
+  /** 摄像机左上角世界坐标(像素)。 */
+  x: number;
+  y: number;
+  /** 视口尺寸(像素);HUD 可用此算"摄像机在屏幕外偏移比例"。 */
+  viewportWidth: number;
+  viewportHeight: number;
 }
 /** 任意已知事件(联合类型),emit / on 接受的形态。 */
 export type GameEvent = GameEventMap[keyof GameEventMap];

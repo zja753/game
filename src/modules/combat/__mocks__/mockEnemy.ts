@@ -7,27 +7,27 @@
  *    `EnemyPort` stub 的;等 Enemy 模块上线后,那边的 `__mocks__/mockEnemy.ts`
  *    会成为正式 mock。
  *  - 实现:测试通过 `addEnemy` / `setEnemyHp` 维护一个"敌人列表";`list()`
- *    每次现算(返回浅拷贝);`applyDamage` 走"扣血 → 判 kill"两步。
+ *    每次现算(返回浅拷贝);`applyDamage` 走"扣血 → 判 kill"两步;
+ *    `spawn` 返回自增 id(走测试驱动,真实模块会调 `RuntimePort.spawnActor`)。
  *  - **不**依赖 Excalibur(纯 TS),测试不需要 setup 浏览器全局。
  *
  * 关键不变量:
  *  - `list()` 返回的是"窗口",每次调用都基于最新内部状态计算。
- *  - `applyDamage` 返回的 `DamageOutcome.hp` 是"扣完后的剩余 HP",
+ *  - `applyDamage` 返回的 `DamageResult.hp` 是"扣完后的剩余 HP",
  *    调用方(`HitResolver`)拿来判定 `isKill`。
  *  - `damageDealtToEnemy(id)` 累加器:测试断言"这发打到了 X 敌人、扣了 N 点"。
+ *  - `spawn` / `clear` 是 M5 Enemy 模块上线后新增的接口;mock 在 M4 阶段先
+ *    提供"足够 Combat 不被类型卡住"的占位实现。
  */
-import type { ActorId, Vec2 } from "../../../runtime/types";
-import type {
-  DamageOutcome,
-  EnemyKind,
-  EnemyPort,
-  EnemySnapshot,
-} from "../../../runtime/ports/EnemyPort";
+import type { ActorId, EnemyKind, Vec2 } from "../../../runtime/types";
+import type { DamageResult, EnemyPort, EnemySnapshot } from "../../../runtime/ports/EnemyPort";
 
 /** Mock 工厂的可调参数。 */
 export interface MockEnemyOptions {
   /** 默认敌人 HP(供 `addEnemy` 不传 hp 时填);默认 100。 */
   defaultHp?: number;
+  /** `spawn()` 自增 id 的起点(避免和测试里 `addEnemy` 用的固定 id 撞);默认 1。 */
+  spawnIdBase?: number;
 }
 
 /** `createMockEnemy` 返回的扩展 Port,带 spy / 驱动函数。 */
@@ -36,6 +36,10 @@ export interface MockEnemyHandle extends EnemyPort {
   readonly enemies: ReadonlyArray<EnemySnapshot>;
   /** spy:被调过的 `applyDamage` 次数。 */
   readonly damageCallCount: number;
+  /** spy:被调过的 `spawn` 次数 + 参数(`kind, pos` 列表)。 */
+  readonly spawnedCalls: ReadonlyArray<{ kind: EnemyKind; pos: Vec2; id: ActorId }>;
+  /** spy:被调过的 `clear` 次数。 */
+  readonly clearCallCount: number;
   /** spy:某 id 累计受到的伤害(测试断言"打到了 X 敌人")。 */
   damageDealtToEnemy(id: ActorId): number;
 
@@ -54,9 +58,13 @@ export interface MockEnemyHandle extends EnemyPort {
  */
 export function createMockEnemy(opts: MockEnemyOptions = {}): MockEnemyHandle {
   const defaultHp = opts.defaultHp ?? 100;
+  const spawnIdBase = opts.spawnIdBase ?? 1;
   const enemies = new Map<ActorId, EnemySnapshot>();
   const damageLog = new Map<ActorId, number>();
+  const spawnLog: Array<{ kind: EnemyKind; pos: Vec2; id: ActorId }> = [];
   let damageCallCount = 0;
+  let clearCallCount = 0;
+  let nextSpawnId = spawnIdBase;
 
   const port: MockEnemyHandle = {
     list(): readonly EnemySnapshot[] {
@@ -64,7 +72,7 @@ export function createMockEnemy(opts: MockEnemyOptions = {}): MockEnemyHandle {
       return Array.from(enemies.values()).map((e) => ({ ...e }));
     },
 
-    applyDamage(id: ActorId, amount: number, _from?: unknown): DamageOutcome {
+    applyDamage(id: ActorId, amount: number, _from?: unknown): DamageResult {
       void _from;
       damageCallCount += 1;
       const e = enemies.get(id);
@@ -83,12 +91,42 @@ export function createMockEnemy(opts: MockEnemyOptions = {}): MockEnemyHandle {
       return { isKill, hp: newHp };
     },
 
+    // ---- M5 EnemyPort 完整表面(本 mock 是过渡) ----
+    // spawn:返回自增 id 并把"刚生成的敌人"挂到 enemies 表,默认 100 HP。
+    // 不广播 `enemy:spawned` 事件(测试用 addEnemy 直接构造更可控)。
+    spawn(kind: EnemyKind, pos: Vec2): ActorId {
+      const id = nextSpawnId++;
+      spawnLog.push({ kind, pos: { x: pos.x, y: pos.y }, id });
+      enemies.set(id, {
+        id,
+        kind,
+        pos: { x: pos.x, y: pos.y },
+        hp: defaultHp,
+        maxHp: defaultHp,
+      });
+      return id;
+    },
+    count(): number {
+      return enemies.size;
+    },
+    clear(): void {
+      clearCallCount += 1;
+      enemies.clear();
+      damageLog.clear();
+    },
+
     // ---- spy 视图 ----
     get enemies() {
       return Array.from(enemies.values()).map((e) => ({ ...e }));
     },
     get damageCallCount() {
       return damageCallCount;
+    },
+    get spawnedCalls() {
+      return spawnLog.slice();
+    },
+    get clearCallCount() {
+      return clearCallCount;
     },
     damageDealtToEnemy(id) {
       return damageLog.get(id) ?? 0;
@@ -114,7 +152,10 @@ export function createMockEnemy(opts: MockEnemyOptions = {}): MockEnemyHandle {
     reset() {
       enemies.clear();
       damageLog.clear();
+      spawnLog.length = 0;
       damageCallCount = 0;
+      clearCallCount = 0;
+      nextSpawnId = spawnIdBase;
     },
   };
 

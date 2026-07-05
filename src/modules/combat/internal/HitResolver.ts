@@ -4,7 +4,7 @@
  * 职责:在 `ProjectileActor.onCollisionStart` 触发的瞬间,接收
  *  `(projectilePos, otherId, damage)` 三参,做以下事情:
  *    1. 把 `otherId` 当成"敌人"调 `EnemyPort.applyDamage` 扣血。
- *    2. 拿 `DamageOutcome.isKill` 决定要不要发 `enemy:killed` 事件。
+ *    2. 拿 `DamageResult.isKill` 决定要不要发 `enemy:killed` 事件。
  *    3. 始终发 `projectile:hit` 事件(HUD 命中飘字)。
  *
  * 第一版公式(M0 简单版,plan §5):

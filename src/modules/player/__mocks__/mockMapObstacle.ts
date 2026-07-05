@@ -18,8 +18,8 @@
  *    这层 mock 误伤。
  *  - 矩形是闭区间(`min <= p <= max`);点的命中用 `EQUALS_EPSILON` 容差。
  */
-import type { Vec2 } from "../../../runtime/types";
-import type { MapObstaclePort, LevelId } from "../../../runtime/ports/MapObstaclePort";
+import type { LevelId, Vec2 } from "../../../runtime/types";
+import type { MapObstaclePort } from "../../../runtime/ports/MapObstaclePort";
 
 /** Mock 工厂的可调参数。 */
 export interface MockMapObstacleOptions {
@@ -91,6 +91,24 @@ export function createMockMapObstacle(opts: MockMapObstacleOptions = {}): MockMa
 
     loadLevel(id: LevelId): void {
       loaded.push(id);
+    },
+
+    // ---- M9 完整 Port 表面(obstacle.md §2,本 mock 是过渡) ----
+    // raycast 走"遍历 rects 算 t"——首版 Player / Combat / Enemy 不调,
+    // 但接口要求存在,返回 null 表示 mock 里没墙挡。
+    raycast(): null {
+      return null;
+    },
+    // playerSpawn / portalSpawn:默认给 bounds 中心 + 对角,
+    // 与真实 MapObstacle 的"出生点 + 传送门点"语义一致(测试可 `setBounds` 改边界)。
+    playerSpawn(): Vec2 {
+      return { x: (bMin.x + bMax.x) / 2, y: (bMin.y + bMax.y) / 2 };
+    },
+    portalSpawn(): Vec2 {
+      return { x: bMax.x - 50, y: bMax.y - 50 };
+    },
+    level() {
+      return { id: "level-1" as LevelId, bounds: { min: bMin, max: bMax } };
     },
 
     // ---- 驱动方法 ----
