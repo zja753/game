@@ -1,6 +1,6 @@
 # Module-Camera
 
-> 顶层路线见 [`../modular-roadmap.md`](../modular-roadmap.md)。本文件是 Camera 模块的自留地:Port / 事件 / 内部子模块拆分 / 验收点都在这里。本模块负责**世界坐标 → 屏幕视图的投影**:玩家跟随 + 地图边缘 hard clamp,**完全复刻土豆兄弟原版手感**,不做任何形式的摄像机缓动 / 过渡动画。
+> 顶层路线见 [`../modular-roadmap.md`](../modular-roadmap.md)。本文件是 Camera 模块的自留地:Port / 事件 / 内部子模块拆分。本模块负责**世界坐标 → 屏幕视图的投影**:玩家跟随 + 地图边缘 hard clamp,**完全复刻土豆兄弟原版手感**,不做任何形式的摄像机缓动 / 过渡动画。
 
 ---
 
@@ -99,17 +99,17 @@ function computeCameraPos(playerPos: Vec2, mapBounds: Rect, viewport: Vec2): Vec
 
 ---
 
-## 7. 独立验收点
+## 7. 验收
 
-- **集成层**:`src/test/integration/` 下有"摄像机跟随"用例,起 `RuntimePort` Mock + `PlayerPort` Mock + `MapObstaclePort` Mock,断言:
-  - 玩家在地图中心 → `camera.pos === player.pos`(玩家在屏幕正中)。
-  - 玩家朝右移出 half-viewport 但未到 clamp 边界 → `camera.pos.x === player.pos.x`(摄像机跟着平移)。
-  - 玩家继续朝右走到 `mapBounds.maxX - half.x` → `camera.pos.x` 停在该值,玩家相对摄像机产生偏移(但仍受 MapObstacle 硬约束走不到地图外)。
-  - 切关 → `MapObstaclePort.bounds()` 返回新边界,clamp 范围立即重算(摄像机可能瞬移,无过渡动画)。
-  - 视口比地图还大(退化情况) → 摄像机锁在地图中心。
-- **vitest**(`CameraController.test.ts`,纯函数):
-  - 公式正确性:5 个 fixture(中心 / 一边 / 四角 / 退化)。
-  - clamp 不溢出:`viewport > mapBounds` 时不出现负坐标或 NaN。
+`pnpm exec vp check` 全绿;`pnpm dev` 接进 RootContainer 后用 RuntimePort/PlayerPort/MapObstaclePort Mock 跑:
+
+- 玩家在地图中心 → `camera.pos === player.pos`
+- 出 half-viewport 但未到 clamp → `camera.pos.x === player.pos.x`
+- 走到 clamp 边界 → `camera.pos.x` 停住,玩家相对摄像机偏移
+- 切关 → `MapObstaclePort.bounds()` 返回新边界,clamp 范围立即重算(瞬移)
+- 视口 > 地图 → 摄像机锁在地图中心
+
+> 测试只在你给具体 repro 或点名时再补,见顶层 §5。
 
 ---
 

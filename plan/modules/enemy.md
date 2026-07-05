@@ -1,6 +1,6 @@
 # Module-Enemy
 
-> 顶层路线见 [`../modular-roadmap.md`](../modular-roadmap.md)。本文件是 Enemy 模块的自留地:Port / 事件 / 内部子模块拆分 / 验收点都在这里。
+> 顶层路线见 [`../modular-roadmap.md`](../modular-roadmap.md)。本文件是 Enemy 模块的自留地:Port / 事件 / 内部子模块拆分。
 
 ---
 
@@ -67,14 +67,11 @@ interface EnemyPort {
 
 ---
 
-## 7. 独立验收点
+## 7. 验收
 
-- **Demo 页** `/demo/enemy`:Mock 一个静止"玩家"在原点,spawn 5 个 Chaser,5 秒后断言它们平均位置距玩家 < 100px(都在追)。Mock 一个在 1000px 外的 Chaser,5 秒后仍 < 50px 移速进展(没在追玩家——验证 Behavior 的"目标选择"逻辑)。
-- **vitest**:
-  - `BehaviorStrategy` 单测 Chaser 在固定 dt 下位置变化正确(速度 × dt)。
-  - `ContactDamage` 不会每帧扣血(`lastHitAt` 节流)。
-  - `EnemyRegistry` 切换 `swapKind` 后 `list()` 返回新 spec。
-  - `applyDamage` 在 hp 归零时返回 `isKill: true` 并发 `enemy:dying`。
+`pnpm exec vp check` 全绿;`pnpm dev` 接进 RootContainer 后:Mock 静止玩家在原点 + spawn 5 个 Chaser,5 秒后断言平均位置距玩家 < 100px;Mock 1000px 外的 Chaser 同样 5 秒后 < 50px 移速进展(没追玩家)。
+
+> 测试只在你给具体 repro 或点名时再补,见顶层 §5。
 
 ---
 

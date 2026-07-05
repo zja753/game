@@ -1,6 +1,6 @@
 # Module-Progression
 
-> 顶层路线见 [`../modular-roadmap.md`](../modular-roadmap.md)。本文件是 Progression 模块的自留地:Port / 事件 / 内部子模块拆分 / 验收点都在这里。Progression 是整局游戏的"导演",**唯一**拥有 `GameScene` 状态机的模块。
+> 顶层路线见 [`../modular-roadmap.md`](../modular-roadmap.md)。本文件是 Progression 模块的自留地:Port / 事件 / 内部子模块拆分。Progression 是整局游戏的"导演",**唯一**拥有 `GameScene` 状态机的模块。
 
 ---
 
@@ -110,19 +110,11 @@ interface ProgressionPort {
 
 ---
 
-## 8. 独立验收点
+## 8. 验收
 
-- **Demo 页** `/demo/progression`:Mock 一次 `enemy:killed { xp: 10 }` 3 次,断言:
-  1. 触发 1 次 `level:up`
-  2. `level:phase` 发了一次 `scene: "levelup_modal"`,`context.choices` 长度 = 3
-  3. `runtime.engine.clock` 已 stop
-  4. 模拟 `reward:picked` 后,`level:phase` 又发了 `scene: "running"`,clock.start()
-- 推进 30 秒,断言 `level:phase` 发 `scene: "portal"`,`portal:appeared` 发 1 次,clock.stop。
-- **vitest**:
-  - `GameSceneController` 状态机测试**所有合法 / 非法转移**(非法转移抛 `InvalidSceneTransition`)。
-  - `XpCurve` 纯函数曲线符合表格(给定 level 输出预期 xpToNext)。
-  - `LevelCatalog` 切关时 `MapObstaclePort.loadLevel` 被调且参数正确。
-  - `PortalSpawner` 仅在 `running → portal` 转移瞬间调一次(不重复 spawn)。
+`pnpm exec vp check` 全绿;`pnpm dev` 接进 RootContainer 后:Mock 3 次 `enemy:killed { xp: 10 }` → 触发 1 次 `level:up` + `level:phase.scene="levelup_modal"` 且 `choices.length=3` + `clock.stop`;模拟 `reward:picked` 后 `level:phase.scene="running"` + `clock.start`。推进 30 秒应出 `portal` 场景 + `portal:appeared` 1 次。
+
+> 测试只在你给具体 repro 或点名时再补,见顶层 §5。
 
 ---
 

@@ -1,6 +1,6 @@
 # Module-Input
 
-> 顶层路线见 [`../modular-roadmap.md`](../modular-roadmap.md)。本文件是 Input 模块的自留地:Port / 事件 / 内部子模块拆分 / 验收点都在这里。
+> 顶层路线见 [`../modular-roadmap.md`](../modular-roadmap.md)。本文件是 Input 模块的自留地:Port / 事件 / 内部子模块拆分。
 
 ---
 
@@ -15,9 +15,6 @@
   - [`../../src/modules/input/internal/KeyboardMap.ts`](../../src/modules/input/internal/KeyboardMap.ts)
   - [`../../src/modules/input/internal/MouseMap.ts`](../../src/modules/input/internal/MouseMap.ts)
   - [`../../src/modules/input/internal/IntentNormalizer.ts`](../../src/modules/input/internal/IntentNormalizer.ts)
-- Mock 工厂: [`../../src/modules/input/__mocks__/mockInput.ts`](../../src/modules/input/__mocks__/mockInput.ts)
-
-测试:84 个用例通过(7 个测试文件),见 §6。`pnpm exec vitest run` / `pnpm exec vp check` 全绿。
 
 与原计划的小偏差(均不影响接口语义):
 
@@ -79,15 +76,11 @@ interface InputPort {
 - `MouseMap`:`mousemove` / `mousedown` / `mouseup` → 更新鼠标位置与按钮状态。
 - `IntentNormalizer`:从按键表算 `axisMove()` 单位向量;边沿检测产出 `input:fire` / `input:pause`。每帧由 Runtime 的 `onTick` 驱动推进。
 
----
+## 6. 验收
 
-## 6. 独立验收点
+`pnpm exec vp check` 全绿;`pnpm dev` 接进 RootContainer 后:复合按压 WASD 时 `axisMove()` 是单位向量,松键归零;`input:fire` 仅在按下瞬间发 1 次;`alt-tab` 后 `KeyboardMap.clear()` 把幽灵键清掉。
 
-- **Demo 页** `/demo/input`:显示当前 `axisMove()`、`isDown('fire')`、`axisAim(mouse)` 的实时值;在 WASD 复合按压时确认归一化是单位向量。
-- **vitest**:模拟 keydown / up 序列,断言:
-  - `axisMove()` 输出符合预期(WASD 复合归一化后是单位向量)。
-  - `input:fire` 仅在按下瞬间发 1 次(松开再按才发下一次)。
-  - `enable() / disable()` 切换不影响按键表的清零逻辑。
+> 测试只在你给具体 repro 或点名时再补,见顶层 §5。
 
 ---
 

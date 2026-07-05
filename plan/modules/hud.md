@@ -1,6 +1,6 @@
 # Module-HudUi
 
-> 顶层路线见 [`../modular-roadmap.md`](../modular-roadmap.md)。本文件是 HudUi 模块的自留地:Port / 事件 / 内部子模块拆分 / 验收点都在这里。HUD 是**唯一**把模块事件渲染成玩家看到画面的模块,也是**唯一**完全无 Port 依赖的模块。
+> 顶层路线见 [`../modular-roadmap.md`](../modular-roadmap.md)。本文件是 HudUi 模块的自留地:Port / 事件 / 内部子模块拆分。HUD 是**唯一**把模块事件渲染成玩家看到画面的模块,也是**唯一**完全无 Port 依赖的模块。
 
 ---
 
@@ -84,16 +84,11 @@ HUD 启动时由 RootContainer 调一次 `hud.show()` 把 React 树挂到 `/game
 
 ---
 
-## 8. 独立验收点
+## 8. 验收
 
-- **集成测试**:在 Storybook / 临时 `/demo/hud` 页面,手动 `GameEventBus.emit({...})` 模拟事件流,断言 DOM 上对应数字 / 卡片正确出现 / 消失:
-  - `player:damaged` → 血条缩短
-  - `level:up` + `level:phase` → 三张升级卡出现
-  - `reward:picked` 点击 → 卡片消失 + 升级条推进
-  - `player:died` → Game Over 遮罩
-- **vitest**:
-  - `EventBridge` 的 reducer 纯函数测试(给定事件序列,断言 store 终态正确)。
-  - 组件级 snapshot 或 RTL(`@testing-library/react`)测试:各 scene 下根布局渲染对应组件。
+`pnpm exec vp check` 全绿;`pnpm dev` 接进 RootContainer 后手动 `GameEventBus.emit({...})` 模拟事件流,断言 DOM 响应:`player:damaged` → 血条缩短;`level:up` + `level:phase` → 三张升级卡出现;`reward:picked` 点击 → 卡片消失 + 升级条推进;`player:died` → Game Over 遮罩。
+
+> 测试只在你给具体 repro 或点名时再补,见顶层 §5。
 
 ---
 

@@ -1,6 +1,6 @@
 # Module-Player
 
-> 顶层路线见 [`../modular-roadmap.md`](../modular-roadmap.md)。本文件是 Player 模块的自留地:Port / 事件 / 内部子模块拆分 / 验收点都在这里。
+> 顶层路线见 [`../modular-roadmap.md`](../modular-roadmap.md)。本文件是 Player 模块的自留地:Port / 事件 / 内部子模块拆分。
 
 ---
 
@@ -74,14 +74,11 @@ interface PlayerPort {
 
 ---
 
-## 7. 独立验收点
+## 7. 验收
 
-- **Demo 页** `/demo/player`:Mock `MapObstacle` 全空 + Mock `Combat` 记录调用次数,玩家满血,按 WASD 移动,断言位置同步;`applyDamage(50)` 看到血量变化 + `player:damaged` 事件;`applyDamage(999)` 触发 `player:died`。
-- **vitest**:
-  - 受伤 3 次(10/10/10)只有 2 次实际扣血(无敌帧 `0.4s` 节流)。
-  - 死亡时 `isDead()` 一次 true 后不再变化。
-  - `player:moved` 触发频率满足阈值策略(不每帧发)。
-  - 接触伤害节流:`inContactEnemies` Set + `collisionend` 清理,同 enemy 重叠期间只扣一次。
+`pnpm exec vp check` 全绿;`pnpm dev` 接进 RootContainer 后:Mock `MapObstacle` 全空 + Mock `Combat` 记录调用,玩家满血;`applyDamage(50)` 看到血量变化 + `player:damaged` 事件;`applyDamage(999)` 触发 `player:died`;按 WASD 移动位置同步。
+
+> 测试只在你给具体 repro 或点名时再补,见顶层 §5。
 
 ---
 

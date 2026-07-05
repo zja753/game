@@ -1,6 +1,6 @@
 # Module-RewardShop
 
-> 顶层路线见 [`../modular-roadmap.md`](../modular-roadmap.md)。本文件是 RewardShop 模块的自留地:Port / 事件 / 内部子模块拆分 / 验收点都在这里。RewardShop 是**唯一**"会主动改其他模块权威字段"的地方,改的入口是**注册回调**,不是 Port 引用。
+> 顶层路线见 [`../modular-roadmap.md`](../modular-roadmap.md)。本文件是 RewardShop 模块的自留地:Port / 事件 / 内部子模块拆分。RewardShop 是**唯一**"会主动改其他模块权威字段"的地方,改的入口是**注册回调**,不是 Port 引用。
 
 ---
 
@@ -70,16 +70,11 @@ interface RewardShopPort {
 
 ---
 
-## 7. 独立验收点
+## 7. 验收
 
-- **Demo 页** `/demo/rewards`:Demo 自身扮演一个 Mock Player,在 RootContainer 启动时 `rewardShop.register({ id: 'heal_small', kind: 'levelup', apply: () => mockPlayer.hp += 20 })`,然后:
-  - 调 `rollLevelUpChoices(1)` 3 次,断言每次返回 3 个不重复 ID。
-  - 调 `applyReward('heal_small')` 后断言 Mock Player 的 hp 涨 20。
-  - **这验证了"按回调表分发"的契约,而不是 RewardShop 知道 Player 的存在。**
-- **vitest**:
-  - `RewardCatalog` 注册 / 反注册 / 重复 ID 处理(重复 ID 后注册的覆盖前注册的)。
-  - `applyReward` 找不到注册项时返回 `{ ok: false, reason: 'unregistered' }` 而非抛错。
-  - `LevelUpRoller` 在 `RewardCatalog` 不足 3 个时返回全部可用项(不抛错)。
+`pnpm exec vp check` 全绿;`pnpm dev` 接进 RootContainer 并在装配时 `rewardShop.register({ id: 'heal_small', kind: 'levelup', apply: () => mockPlayer.hp += 20 })` 后:调 `rollLevelUpChoices(1)` 3 次 → 每次返回 3 个不重复 ID;`applyReward('heal_small')` 后 Mock Player hp +20。验证"按回调表分发",RewardShop 不知道 Player 存在。
+
+> 测试只在你给具体 repro 或点名时再补,见顶层 §5。
 
 ---
 

@@ -1,6 +1,6 @@
 # Module-Runtime
 
-> 顶层路线见 [`../modular-roadmap.md`](../modular-roadmap.md)。本文件是 Runtime 模块的**自留地**:Port / 事件 / 内部子模块拆分 / 验收点都在这里。Runtime 是最底层,被所有其他模块依赖。
+> 顶层路线见 [`../modular-roadmap.md`](../modular-roadmap.md)。本文件是 Runtime 模块的**自留地**:Port / 事件 / 内部子模块拆分。Runtime 是最底层,被所有其他模块依赖。
 
 ---
 
@@ -14,42 +14,13 @@
 - 内部子模块: [`../../src/modules/runtime/internal/`](../../src/modules/runtime/internal/)(`EngineFactory` / `FrameClock` / `ObjectPool` / `CollisionLayerManager`)
 - Mock 工厂: [`../../src/modules/runtime/__mocks__/mockRuntime.ts`](../../src/modules/runtime/__mocks__/mockRuntime.ts)
 
-测试:见 [`../../src/modules/runtime/__mocks__/mockRuntime.test.ts`](../../src/modules/runtime/__mocks__/mockRuntime.test.ts) 与 [`../../src/modules/runtime/internal/ObjectPool.test.ts`](../../src/modules/runtime/internal/ObjectPool.test.ts),`pnpm exec vitest run` 全绿。
-
 ---
 
-## 0. 一句话理解 Runtime
+## 0. 职责
 
-Runtime = **引擎胶水层**。它的全部存在意义,是把 Excalibur 这套相对底层、命令式的游戏引擎 API,**包成一个最小、最干净、最容易"假装不在"的接口**,然后塞给其他 8 个模块用。
+封装 Excalibur:`Engine` 生命周期、帧驱动 tick、Actor 工厂、对象池、坐标系统、碰撞层——上游是 `new Engine(...)` / `scene.add(actor)` / 池 / 碰撞 group 这些 Excalibur 的脏活,塞给下游的就是 `spawnActor` / `onTick` / `objectPool` / `raycast`。**不**懂任何游戏逻辑,不知道玩家是谁、关卡是什么。
 
-你可以把它想成一个翻译官:
-
-- 上游(Excalibur):`new Engine(...)`、`scene.add(actor)`、碰撞 group、对象池要自己维护……
-- 下游(其他模块):只想 `spawnActor(spec)` / `onTick(cb)` / `pool('bullet', factory, reset)` / `raycast(...)`。
-
-Runtime 把前者压扁成后者,自己吞掉所有"造引擎、开窗口、处理 resize、维护池、换算 dt"的脏活。
-
-> **教学要点**:Runtime **不**懂任何游戏逻辑。它不知道玩家是谁、敌人是谁、关卡是什么;它只知道"有一坨 Actor 住在引擎里,每帧有人在画它们,我想办法让一切跑得顺"。
-
----
-
-## 1. 职责
-
-封装 Excalibur:`Engine` 生命周期、帧驱动 tick、Actor 工厂、对象池、坐标系统、碰撞层。**不**做游戏逻辑。
-
-把它展开成"具体要做哪些事":
-
-1. **造引擎并活下去**:`new Engine({...})`,挂到 DOM 上,处理窗口 resize / devicePixelRatio,游戏结束清理。
-2. **管帧**:`preupdate` 事件 → 算出 dt → 回调给所有订阅者;提供一个"统一时钟 `now()`"。
-3. **管 Actor 出生与死亡**:暴露 `spawnActor(spec)` / `despawnActor(id)` 让别人不用直接接触 Excalibur 的 `scene.add/remove`。
-4. **管场景换页**:`loadScene<T>(sceneSpec): T`,让别人拿到场景根句柄。
-5. **管对象复用**:`objectPool<T>(key, factory, reset)`,把"造 N 个子弹、回收 N 个子弹"这件事内化。
-6. **管碰撞**:`addLayer(a, b)` 注册哪两组会撞,`raycast(...)` 提供空间查询。
-7. **什么都不管**:玩家血量、敌人 AI、武器伤害、关卡状态——统统不管。
-
----
-
-## 2. 对外 Port(别的模块看到的接口)
+## 1. 对外 Port
 
 文件:`game/src/runtime/ports/RuntimePort.ts`
 
@@ -74,7 +45,7 @@ raycast(from: Vec2, dir: Vec2, maxDist: number, layers: string[]): HitResult | n
 
 `ActorSpec` / `SceneSpec` / `ActorId` / `Vec2` / `HitResult` 等类型在 `runtime/types.ts` 集中定义。
 
-### 2.1 逐个方法教学
+### 1.1 逐个方法教学
 
 下面把每个方法当成"我第一次见这个 API"来讲。
 
@@ -309,10 +280,6 @@ class ObjectPool<T> {
 - 子弹池、敌人尸体池、粒子池、伤害数字池——任何高频 spawn / despawn 的对象都走这里。
 - Combat 模块启动时:`const bulletPool = new ObjectPool<BulletActor>(() => new BulletActor(), b => b.reset());` 然后通过 `runtime.objectPool('bullet', ...)` 拿到的就是这个东西。
 
-#### 验收要点
-
-`ObjectPool` 在 `acquire/release` 1000 次后,**`inUseCount` 必须严格等于 0**——这是验收点之一(见 §6)。任何"acquire 出去忘了 release"的 bug 都会被这个测试抓到。
-
 ### 5.3 `FrameClock`
 
 **职能**:对外 `onTick(cb)` 与 `now()`,内部订阅 `engine.on('preupdate', ...)` 并换算 dt。
@@ -389,25 +356,6 @@ postupdate
 - 战斗中:Enemy AI 每帧 raycast 探测前方。
 
 > **本模块如再拆更深,自建 `modules/runtime/sub/<name>.md` 子目录。**
-
----
-
-## 6. 独立验收点
-
-### 6.1 Demo 页(本项目已取消)
-
-> 顶层路线 §0.3 已经决定砍掉 `/demo/<module>` 路由,改用 vitest 单测 + 集成测试。**这一节保留作为"原本要验收什么"的备查**,不再开路由。
-
-原计划:**Demo 页** `/demo/runtime`:创建 Engine,画 1 个 Actor 让它以 100px/s 速度走 2 秒,断言位置 = (200, 0) ± 2。
-
-### 6.2 vitest 单测
-
-- **`ObjectPool`**:`acquire/release` 1000 次后无内存泄漏(`inUseCount` 归零)。
-- **`raycast`**:在已知布局下命中正确点(给定墙坐标,断言 `hit.position`)。
-
-### 6.3 集成测试
-
-- 把 Runtime + Input + Player + MapObstacle 拼起来,验证"按 D 键 2 秒后玩家 Actor 位置 = (200, 0) ± 2",这是 §0.3 提到的 `src/test/integration/` 范畴。
 
 ---
 

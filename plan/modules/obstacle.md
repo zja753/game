@@ -1,6 +1,6 @@
 # Module-MapObstacle
 
-> 顶层路线见 [`../modular-roadmap.md`](../modular-roadmap.md)。本文件是 MapObstacle 模块的自留地:Port / 事件 / 内部子模块拆分 / 验收点都在这里。本模块是**纯静态数据 + 查询**,无 Port 依赖。
+> 顶层路线见 [`../modular-roadmap.md`](../modular-roadmap.md)。本文件是 MapObstacle 模块的自留地:Port / 事件 / 内部子模块拆分。本模块是**纯静态数据 + 查询**,无 Port 依赖。
 
 ---
 
@@ -60,13 +60,11 @@ interface MapObstaclePort {
 
 ---
 
-## 7. 独立验收点
+## 7. 验收
 
-- **Demo 页** `/demo/obstacle`:画 1 关地图,点击地图任意点,DOM 上显示 `isBlocked(x,y)` 结果(红 / 绿);从玩家出生点向右射线 1000px,断言碰到第一个墙的坐标。
-- **vitest**:
-  - `CollisionGrid` 1 关地图 1 万次 `isBlocked` 调用 < 5ms(性能预算)。
-  - `MapCatalog` 跨关 `loadLevel(n)` 后 `level()` 返回新关的 `MapData`,`bounds()` / `playerSpawn()` 同步更新。
-  - `RayCaster` 在已知布局(2 堵平行墙)下断言射线在第 1 堵墙命中、不穿透。
+`pnpm exec vp check` 全绿;`pnpm dev` 接进 RootContainer 后:画 1 关地图,点击任意点 DOM 上显示 `isBlocked(x,y)` 结果(红/绿);从出生点向右射线 1000px 碰到第一堵墙即停。
+
+> 测试只在你给具体 repro 或点名时再补,见顶层 §5。
 
 ---
 
