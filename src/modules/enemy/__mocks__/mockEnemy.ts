@@ -1,23 +1,25 @@
 /**
- * `createMockEnemy` — Enemy 模块的 Mock 工厂(占位,见 plan §5.1)。
+ * `createMockEnemy` — Enemy 模块的 Mock 工厂(plan §5.1 共享 Mock)。
  *
- * 状态:
- *  - Enemy 模块**尚未落地**(M5 排在 M4 之后),但 `runtime/ports/EnemyPort.ts`
- *    已先定好接口形态。本工厂就是给 Combat 单测 + 集成测试提供
- *    `EnemyPort` stub 的;等 Enemy 模块上线后,那边的 `__mocks__/mockEnemy.ts`
- *    会成为正式 mock。
- *  - 实现:测试通过 `addEnemy` / `setEnemyHp` 维护一个"敌人列表";`list()`
+ * 供以下测试使用:
+ *  - **Enemy 模块自己的单测**(模块内部子模块 + 集成测试)。
+ *  - **Combat 模块单测 / 集成测试** —— Combat 依赖 `EnemyPort` 来选目标 + 写伤害,
+ *    早期(M4 阶段)本 mock 由 `combat/__mocks__/mockEnemy.ts` 提供;
+ *    M5 Enemy 模块上线后,**唯一**权威 mock 在本文件。
+ *  - **集成测试**(`src/test/integration/**`)把多个模块拼起来时,用作 `EnemyPort` stub。
+ *
+ * 实现:
+ *  - 测试通过 `addEnemy` / `setEnemyHp` 维护一个"敌人列表";`list()`
  *    每次现算(返回浅拷贝);`applyDamage` 走"扣血 → 判 kill"两步;
- *    `spawn` 返回自增 id(走测试驱动,真实模块会调 `RuntimePort.spawnActor`)。
- *  - **不**依赖 Excalibur(纯 TS),测试不需要 setup 浏览器全局。
+ *    `spawn` 返回自增 id。
+ *  - **不**依赖 Excalibur(纯 TS),所以测试不需要 setup 浏览器全局。
  *
  * 关键不变量:
  *  - `list()` 返回的是"窗口",每次调用都基于最新内部状态计算。
  *  - `applyDamage` 返回的 `DamageResult.hp` 是"扣完后的剩余 HP",
  *    调用方(`HitResolver`)拿来判定 `isKill`。
  *  - `damageDealtToEnemy(id)` 累加器:测试断言"这发打到了 X 敌人、扣了 N 点"。
- *  - `spawn` / `clear` 是 M5 Enemy 模块上线后新增的接口;mock 在 M4 阶段先
- *    提供"足够 Combat 不被类型卡住"的占位实现。
+ *  - `spawn()` 自动给新敌人填 `defaultHp`(默认 100);`addEnemy` 可显式覆盖。
  */
 import type { ActorId, EnemyKind, Vec2 } from "../../../runtime/types";
 import type { DamageResult, EnemyPort, EnemySnapshot } from "../../../runtime/ports/EnemyPort";
@@ -91,9 +93,6 @@ export function createMockEnemy(opts: MockEnemyOptions = {}): MockEnemyHandle {
       return { isKill, hp: newHp };
     },
 
-    // ---- M5 EnemyPort 完整表面(本 mock 是过渡) ----
-    // spawn:返回自增 id 并把"刚生成的敌人"挂到 enemies 表,默认 100 HP。
-    // 不广播 `enemy:spawned` 事件(测试用 addEnemy 直接构造更可控)。
     spawn(kind: EnemyKind, pos: Vec2): ActorId {
       const id = nextSpawnId++;
       spawnLog.push({ kind, pos: { x: pos.x, y: pos.y }, id });

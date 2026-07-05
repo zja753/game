@@ -14,18 +14,18 @@
 
 ## 落地进度
 
-| 模块                  | 状态      | 落地日期   | 验收                                 |
-| --------------------- | --------- | ---------- | ------------------------------------ |
-| **M1 Module-Runtime** | ✅ 第一版 | 2026-07-04 | vitest + tsc + vp check 全绿         |
-| **M2 Module-Input**   | ✅ 第一版 | 2026-07-04 | vitest(84 用例)+ tsc + vp check 全绿 |
-| **M3 Module-Player**  | ✅ 第一版 | 2026-07-04 | vitest(41 用例)+ tsc + vp check 全绿 |
-| M4 Module-Combat      | ⬜ 未开始 | —          | —                                    |
-| M5 Module-Enemy       | ⬜ 未开始 | —          | —                                    |
-| M6 Module-Progression | ⬜ 未开始 | —          | —                                    |
-| M7 Module-RewardShop  | ⬜ 未开始 | —          | —                                    |
-| M8 Module-HudUi       | ⬜ 未开始 | —          | —                                    |
-| M9 Module-MapObstacle | ⬜ 未开始 | —          | —                                    |
-| M10 Module-Camera     | ⬜ 未开始 | —          | —                                    |
+| 模块                  | 状态      | 落地日期   | 验收                                              |
+| --------------------- | --------- | ---------- | ------------------------------------------------- |
+| **M1 Module-Runtime** | ✅ 第一版 | 2026-07-04 | vitest + tsc + vp check 全绿                      |
+| **M2 Module-Input**   | ✅ 第一版 | 2026-07-04 | vitest(84 用例)+ tsc + vp check 全绿              |
+| **M3 Module-Player**  | ✅ 第一版 | 2026-07-04 | vitest(41 用例)+ tsc + vp check 全绿              |
+| **M4 Module-Combat**  | ✅ 第一版 | 2026-07-03 | vitest + tsc + vp check 全绿                      |
+| **M5 Module-Enemy**   | ✅ 第一版 | 2026-07-03 | vitest(50 用例)+ tsc + vp check + pnpm build 全绿 |
+| M6 Module-Progression | ⬜ 未开始 | —          | —                                                 |
+| M7 Module-RewardShop  | ⬜ 未开始 | —          | —                                                 |
+| M8 Module-HudUi       | ⬜ 未开始 | —          | —                                                 |
+| M9 Module-MapObstacle | ⬜ 未开始 | —          | —                                                 |
+| M10 Module-Camera     | ⬜ 未开始 | —          | —                                                 |
 
 **粘合层进度:**
 

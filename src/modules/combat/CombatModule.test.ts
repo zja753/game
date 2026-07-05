@@ -21,7 +21,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import { createCombatModule } from "./CombatModule";
-import { createMockEnemy } from "./__mocks__/mockEnemy";
+import { createMockEnemy } from "../enemy/__mocks__/mockEnemy";
 import { createMockRuntime } from "../runtime/__mocks__/mockRuntime";
 import { createMockMapObstacle } from "../player/__mocks__/mockMapObstacle";
 import { Actor, type Side, type CollisionContact } from "excalibur";

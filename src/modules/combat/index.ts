@@ -7,5 +7,3 @@
 export type { CombatPort, FireResult } from "../../runtime/ports/CombatPort";
 export type { CombatModuleDeps, CombatPortFactory } from "./CombatModule";
 export { createCombatModule, PROJECTILE_COLLISION_LAYER } from "./CombatModule";
-export { createMockEnemy } from "./__mocks__/mockEnemy";
-export type { MockEnemyHandle, MockEnemyOptions } from "./__mocks__/mockEnemy";

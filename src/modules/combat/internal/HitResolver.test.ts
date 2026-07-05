@@ -11,7 +11,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import { createGameEventBus } from "../../../runtime/EventBus";
 import type { GameEvent } from "../../../runtime/EventBus";
-import { createMockEnemy } from "../__mocks__/mockEnemy";
+import { createMockEnemy } from "../../enemy/__mocks__/mockEnemy";
 import { resolveHit } from "./HitResolver";
 
 describe("resolveHit", () => {
