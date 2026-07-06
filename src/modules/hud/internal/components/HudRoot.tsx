@@ -11,6 +11,12 @@
  *  - 这是**唯一**解释 `scene` 字段的地方(其他组件都不读 scene);
  *  - 自身**不**调 EventBus;只调上层注入的 `onPickReward` 回调。
  *  - 切换 scene 时用 React 条件渲染,避免在 DOM 残留旧 overlay。
+ *
+ * 范围(ui-react-split.md §2):
+ *  - 只负责**游戏中**浮层 —— `running` / `levelup_modal` / `portal` / pause(在
+ *    running 内)。
+ *  - 全屏场景(`character_select` / `shop` / `gameover` / `victory`)由
+ *    `src/pages/*` 路由组件渲染,**不**在本文件出现。
  */
 import { useSyncExternalStore } from "react";
 import type { ReactElement } from "react";
@@ -20,15 +26,7 @@ import type { RewardId, RewardKind } from "../../../../runtime/types";
 import type { HudUiStore, HudUiState } from "../HudUiStore";
 
 import { HealthBar, XpBar, Timer, WeaponIcon, KillCounter, LevelBadge } from "./widgets";
-import {
-  LevelUpCards,
-  ShopOverlay,
-  CharacterSelect,
-  PauseOverlay,
-  GameOverOverlay,
-  VictoryOverlay,
-  PortalHint,
-} from "./overlays";
+import { LevelUpCards, PauseOverlay, PortalHint } from "./overlays";
 
 /** `HudRoot` props —— 数据注入(由上层 `HudUiModule` 装配,这样组件零全局依赖)。 */
 export interface HudRootProps {
@@ -68,16 +66,6 @@ export function renderByScene(
   onPickReward: HudRootProps["onPickReward"],
 ): ReactElement {
   switch (state.scene) {
-    case "character_select": {
-      const ctx = state.sceneContext;
-      // SceneContext 类型有 `characters` 字段(roadmap §3 SceneContext 定义)。
-      const characters: readonly string[] = ctx.scene === "character_select" ? ctx.characters : [];
-      return (
-        <div className="hud-root hud-root--character-select">
-          <CharacterSelect characters={characters} />
-        </div>
-      );
-    }
     case "running": {
       return (
         <div className="hud-root hud-root--running">
@@ -111,56 +99,19 @@ export function renderByScene(
         </div>
       );
     }
-    case "shop": {
-      return (
-        <div className="hud-root hud-root--shop">
-          <HudTopBar state={state} />
-          {state.sceneContext.scene === "shop" ? (
-            <ShopOverlay items={state.sceneContext.items} onPickReward={onPickReward} />
-          ) : null}
-        </div>
-      );
-    }
-    case "gameover": {
-      const ctx = state.sceneContext;
-      const stats =
-        ctx.scene === "gameover"
-          ? ctx.stats
-          : {
-              elapsed: 0,
-              kills: 0,
-              damageDealt: 0,
-              level: 1,
-              playerLevel: 1,
-            };
-      return (
-        <div className="hud-root hud-root--gameover">
-          <GameOverOverlay stats={stats} />
-        </div>
-      );
-    }
-    case "victory": {
-      const ctx = state.sceneContext;
-      const stats =
-        ctx.scene === "victory"
-          ? ctx.stats
-          : {
-              elapsed: 0,
-              kills: 0,
-              damageDealt: 0,
-              level: 1,
-              playerLevel: 1,
-            };
-      return (
-        <div className="hud-root hud-root--victory">
-          <VictoryOverlay stats={stats} />
-        </div>
-      );
-    }
+    // 全屏场景(`character_select` / `shop` / `gameover` / `victory`)由
+    // 路由层负责 —— ui-react-split.md §2。本组件**不**渲染它们;
+    // `RouteSceneBridge` 会在 `level:phase` 事件里把这些 scene 切成对应路由,
+    // 切回本组件前会先经过 `running` 等中间态,所以这里走空根兜底。
+    case "character_select":
+    case "shop":
+    case "gameover":
+    case "victory":
+      return <div className="hud-root" />;
     default: {
+      // 兜底:未来 GameScene 加新字面量而本组件未更新,走空根。
       const _exhaustive: never = state.scene;
       void _exhaustive;
-      // 兜底:未知 scene 走空根(避免 React null 警告)。
       return <div className="hud-root" />;
     }
   }

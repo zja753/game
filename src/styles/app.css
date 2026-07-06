@@ -1,6 +1,13 @@
-/* 全局:reset + 深色主题。
-   game 路由(canvas + HUD)由 `.page-game` / `.game-stage` / `.game-canvas` /
-   `.hud-mount` 共同占满视口,脱离文档流。 */
+/* 全局:reset + 深色主题(plan/ui-react-split.md §2-§4)。
+   新的 DOM 结构:
+     #app
+     ├── .game-stage-persistent   ← canvas + .hud-mount,App 层级常驻
+     └── .page (路由组件)        ← Home / CharacterSelectPage / PlayPage / ShopPage /
+                                   GameOverPage / VictoryPage;在 .game-stage-persistent
+                                   之上,按路由显示对应内容。
+   `.game-stage-persistent` 默认隐藏(canvas 不渲染成本浪费但状态保留);
+   仅 `/play` 路由下显示(canvas + HUD 浮层覆盖在 PlayPage 上,
+   PlayPage 自身只渲染空白 `<section class="page page-game">` 占位)。 */
 
 :root {
   color-scheme: light dark;
@@ -27,77 +34,184 @@ body {
 
 #app {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  /* 让 .game-stage-persistent 能用 position: fixed + inset: 0 撑满视口;
+     不再像旧版那样用 flex column 包 nav + main。 */
 }
 
-.app-nav {
-  display: flex;
-  gap: 1rem;
-  padding: 0.75rem 1.25rem;
-  border-bottom: 1px solid #1b1d22;
-}
+/* ---- 持久化游戏舞台:canvas + hud-mount ---- */
 
-.app-nav a {
-  color: #4cc9f0;
-  text-decoration: none;
-}
-
-.app-nav a:hover {
-  text-decoration: underline;
-}
-
-.app-main {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 2rem;
-}
-
-.page {
-  max-width: 640px;
-  width: 100%;
-}
-
-/* ---- /game 路由:全屏 Excalibur canvas + HUD 浮层 ---- */
-
-/* 路由组件外壳脱离文档流,撑满视口。 */
-.page-game {
+/* `.game-stage-persistent` 是 GameStateProvider 渲染的固定层,默认隐藏。
+   仅 `/play` 路由下显示(canvas + HUD 浮层覆盖在 PlayPage 上;
+   PlayPage 自身只渲染空白占位 `<section class="page page-game">`)。 */
+.game-stage-persistent {
   position: fixed;
   inset: 0;
-  width: 100vw;
-  height: 100vh;
-  margin: 0;
-  padding: 0;
-  max-width: none;
-  /* 让 canvas / hud-mount 直接占满,不受 page 居中影响。 */
+  z-index: 0;
+  /* 默认隐藏(canvas 不渲染成本浪费但状态保留);/play 路由下显示。 */
+  visibility: hidden;
+  pointer-events: none;
 }
 
-/* `.game-stage` 是 Game 组件的根 div,内部含 canvas + hud-mount。
-   Excalibur canvas 走 relative,内部 coordinate 是 viewport 像素;HUD
-   overlay 走 fixed 浮在 canvas 上。 */
-.game-stage {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
+/* /play 路由下的目标容器让上面的层显示。 */
+.page-game ~ .game-stage-persistent,
+body:has(.page-game) .game-stage-persistent {
+  visibility: visible;
+  pointer-events: auto;
 }
 
+/* canvas 自身:Excalibur 渲染目标。 */
 .game-canvas {
   display: block;
-  width: 100%;
-  height: 100%;
-  /* canvas 默认是 inline,会留 4px baseline 间隙 —— block 化去掉。 */
+  width: 100vw;
+  height: 100vh;
 }
 
-/* `.hud-mount` 是 HudUi 的 React 根;它本身不渲染内容,
-   内容由 `<HudRoot>` 渲染成 fixed 浮层(见 hud.css)。
-   这里留个占位 style,确保挂载点不影响布局。 */
+/* `.hud-mount` 是 HudUi 的 React 根;浮在 canvas 之上,
+   pointer-events: none 让点击穿透到 canvas(只有 HUD 内部的按钮自己
+   重新开启 pointer-events)。 */
 .hud-mount {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
+}
+
+/* ---- 路由层 page 容器 ---- */
+
+/* 路由组件外壳 —— 默认垂直居中 + 居中布局,所有非 /play 路由长这样。 */
+.page {
+  position: relative;
+  z-index: 10;
+  max-width: 640px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1rem;
+}
+
+.page__title {
+  font-size: 1.5rem;
+  margin: 0 0 0.5rem;
+}
+
+.page__hint {
+  color: #9aa0a6;
+  margin: 0;
+}
+
+.page__cta {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background: #4cc9f0;
+  color: #0b0d12;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.page__cta:hover {
+  background: #6cd4f4;
+}
+
+/* /play 路由外壳:不显示页面内容(只要 canvas + HUD),但保留一个
+   透明占位让 body:has(.page-game) 选择器匹配到。 */
+.page-game {
+  /* 故意只渲染一个透明的 0 高度占位元素;真正的视觉由
+     .game-stage-persistent 提供(canvas + hud-mount)。 */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* ---- 角色列表 ---- */
+
+.character-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.character-list__item {
+  display: flex;
+}
+
+/* ---- 商店列表 ---- */
+
+.shop-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.shop-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  background: #15181f;
+  border: 1px solid #1b1d22;
+  border-radius: 6px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.shop-card:hover {
+  border-color: #4cc9f0;
+}
+
+.shop-card__name {
+  font-weight: 600;
+}
+
+.shop-card__desc {
+  font-size: 0.85rem;
+  color: #9aa0a6;
+}
+
+.shop-card__price {
+  font-size: 0.85rem;
+  color: #f0c84c;
+}
+
+/* ---- 结算页 stats ---- */
+
+.result-stats {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 1rem;
+  row-gap: 0.4rem;
+  margin: 0;
+  padding: 1rem;
+  background: #15181f;
+  border: 1px solid #1b1d22;
+  border-radius: 6px;
+}
+
+.result-stats dt {
+  color: #9aa0a6;
+}
+
+.result-stats dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
 }

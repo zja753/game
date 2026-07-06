@@ -84,6 +84,18 @@ export interface RootContainerHandle {
   /** Excalibur 引擎逃生舱口(roadmap §6.1 + RuntimePort `engine` 字段)。 */
   readonly engine: Engine;
   /**
+   * Progression Port —— 供 `src/pages/*` 路由组件调用场景转移
+   * (`pickCharacter` / `startRun` / `advance` / `pauseToggle`)。新增于
+   * ui-react-split.md §4:路由层需要直接调 Progression,但模块间解耦铁律
+   * (roadmap §0.1)阻止页面 import 任何 modules 下的 internal,所以 Port
+   * 引用通过本 handle 暴露。**只读暴露**(模块不通过这里修改 handle 内部)。
+   */
+  readonly progression: ProgressionPort;
+  /**
+   * RewardShop Port —— 供 `/shop` 路由调用 `applyReward`。同 §4。
+   */
+  readonly rewardShop: RewardShopPort;
+  /**
    * 启动游戏主循环:广播 `level:phase character_select → running` 一系列事件,
    * Player / Enemy / HUD 全自动响应。幂等 —— 重复调用只在第一次生效。
    */
@@ -271,6 +283,8 @@ export function createRootContainer(deps: RootContainerDeps): RootContainerHandl
     ctx,
     bus,
     engine: runtime.engine,
+    progression,
+    rewardShop,
     start() {
       if (started) return;
       started = true;
